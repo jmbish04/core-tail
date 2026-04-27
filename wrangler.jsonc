@@ -30,6 +30,15 @@
   "ai": {
     "binding": "AI",
   },
+  "durable_objects": {
+    "bindings": [{ "name": "LOG_ANALYZER_AGENT", "class_name": "LogAnalyzerAgent" }],
+  },
+  "migrations": [
+    {
+      "tag": "v1",
+      "new_sqlite_classes": ["LogAnalyzerAgent"],
+    },
+  ],
   "d1_databases": [
     {
       "binding": "DB",

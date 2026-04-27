@@ -5,8 +5,30 @@
  * It includes tables for authentication, dashboard metrics, AI threads, and system health.
  */
 
-import { sqliteTable, text, integer, real } from "drizzle-orm/sqlite-core";
 import { sql } from "drizzle-orm";
+import { sqliteTable, text, integer, real, index } from "drizzle-orm/sqlite-core";
+
+/**
+ * Logs table for storing incoming tail logs from other workers
+ */
+export const logs = sqliteTable(
+  "logs",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    workerName: text("worker_name").notNull(),
+    level: text("level").notNull(),
+    message: text("message").notNull(),
+    metadata: text("metadata"), // JSON string
+    timestamp: integer("timestamp", { mode: "timestamp" })
+      .notNull()
+      .default(sql`(unixepoch())`),
+  },
+  (table) => {
+    return {
+      workerNameIdx: index("worker_name_idx").on(table.workerName),
+    };
+  },
+);
 
 /**
  * Users table for authentication

@@ -1,0 +1,11 @@
+---
+import Layout from '../layouts/Layout.astro';
+import { LogsDashboard } from '../components/LogsDashboard';
+---
+
+<Layout title="Logs Dashboard | Admin">
+  <main class="container mx-auto py-8 text-white">
+    <h1 class="text-3xl font-bold mb-8">Tail Worker & Log Analysis</h1>
+    <LogsDashboard client:only="react" />
+  </main>
+</Layout>
