@@ -38,8 +38,8 @@ const getLogsRoute = createRoute({
     query: z.object({
       workerName: z.string().optional().openapi({ description: 'Filter by worker name' }),
       outcome: z.enum(['ok', 'exception', 'canceled', 'exceededCpu', 'exceededMemory', 'unknown']).optional().openapi({ description: 'Filter by outcome' }),
-      limit: z.string().transform(Number).pipe(z.number().int().min(1).max(1000)).optional().default('100').openapi({ description: 'Number of logs to return' }),
-      offset: z.string().transform(Number).pipe(z.number().int().min(0)).optional().default('0').openapi({ description: 'Number of logs to skip' }),
+      limit: z.string().transform(Number).pipe(z.number().int().min(1).max(1000)).optional().default(100).openapi({ description: 'Number of logs to return' }),
+      offset: z.string().transform(Number).pipe(z.number().int().min(0)).optional().default(0).openapi({ description: 'Number of logs to skip' }),
       since: z.string().datetime().optional().openapi({ description: 'Filter logs after this timestamp' }),
     }),
   },
@@ -109,7 +109,7 @@ const getLogsStatsRoute = createRoute({
               outcome: z.string(),
               count: z.number().int(),
             })),
-            byWorker: z.record(z.record(z.number())),
+            byWorker: z.record(z.string(), z.record(z.string(), z.number())),
           }),
         },
       },
@@ -162,8 +162,8 @@ app.doc('/openapi.json', {
   },
   servers: [
     {
-      url: '/api',
-      description: 'API Server',
+      url: "/api",
+      description: "API Server",
     },
   ],
 });
@@ -176,10 +176,10 @@ app.get(
   '/scalar',
   apiReference({
     spec: {
-      url: '/openapi.json',
+      url: "/openapi.json",
     },
-    theme: 'dark',
-  })
+    theme: "default",
+  } as any),
 );
 
 // GET /docs - redirect to scalar

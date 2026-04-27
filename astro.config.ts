@@ -27,5 +27,10 @@ export default defineConfig({
   integrations: [react()],
   vite: {
     plugins: [tailwindcss()],
+    build: {
+      rollupOptions: {
+        external: ["cloudflare:workers"],
+      },
+    },
   },
 });

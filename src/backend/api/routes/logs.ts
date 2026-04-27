@@ -4,10 +4,12 @@
 
 import { OpenAPIHono } from '@hono/zod-openapi';
 import { drizzle } from 'drizzle-orm/d1';
-import { workerLogs } from '../../db/schema';
+import { workerLogs, logs } from '../../db/schema';
 import { desc, eq, sql, and, gte } from 'drizzle-orm';
 import type { Bindings } from '../index';
 import { getLogsRoute, getWorkersListRoute, getLogsStatsRoute, getLogByIdRoute } from './openapi';
+import { zValidator } from "@hono/zod-validator";
+import { z } from "zod";
 
 const logsRouter = new OpenAPIHono<{ Bindings: Bindings }>();
 
@@ -58,7 +60,7 @@ logsRouter.openapi(getLogsRoute, async (c) => {
   const totalCount = Number(countResult.count);
 
   // Get paginated logs
-  const logs = await db
+  const workerLogsResult = await db
     .select()
     .from(workerLogs)
     .where(whereClause)
@@ -67,8 +69,9 @@ logsRouter.openapi(getLogsRoute, async (c) => {
     .offset(offset);
 
   // Parse JSON fields with error handling
-  const parsedLogs = logs.map(log => ({
+  const parsedLogs = workerLogsResult.map(log => ({
     ...log,
+    outcome: log.outcome as "unknown" | "ok" | "canceled" | "exception" | "exceededCpu" | "exceededMemory",
     eventTimestamp: log.eventTimestamp.toISOString(),
     logs: safeJsonParse(log.logs),
     exceptions: safeJsonParse(log.exceptions),
@@ -81,7 +84,7 @@ logsRouter.openapi(getLogsRoute, async (c) => {
       offset,
       total: totalCount,
     },
-  });
+  }, 200);
 });
 
 /**
@@ -98,7 +101,7 @@ logsRouter.openapi(getWorkersListRoute, async (c) => {
 
   return c.json({
     workers: workers.map(w => w.workerName),
-  });
+  }, 200);
 });
 
 /**
@@ -159,7 +162,7 @@ logsRouter.openapi(getLogsStatsRoute, async (c) => {
       acc[workerName][item.outcome] = Number(item.count);
       return acc;
     }, {} as Record<string, Record<string, number>>),
-  });
+  }, 200);
 });
 
 /**
@@ -182,12 +185,60 @@ logsRouter.openapi(getLogByIdRoute, async (c) => {
 
   const parsedLog = {
     ...log[0],
+    outcome: log[0].outcome as "unknown" | "ok" | "canceled" | "exception" | "exceededCpu" | "exceededMemory",
     eventTimestamp: log[0].eventTimestamp.toISOString(),
     logs: safeJsonParse(log[0].logs),
     exceptions: safeJsonParse(log[0].exceptions),
   };
 
-  return c.json({ log: parsedLog });
+  return c.json({ log: parsedLog }, 200);
+});
+
+// Feature Branch Compatibility API
+
+logsRouter.get(
+  "/legacy",
+  zValidator(
+    "query",
+    z.object({
+      workerName: z.string().optional(),
+      limit: z.string().optional().default("100"),
+      offset: z.string().optional().default("0"),
+    }),
+  ),
+  async (c) => {
+    const db = drizzle(c.env.DB);
+    const { workerName, limit, offset } = c.req.valid("query");
+
+    let query: any = db.select().from(logs).orderBy(desc(logs.timestamp));
+
+    if (workerName && workerName !== 'all') {
+      query = db
+        .select()
+        .from(logs)
+        .where(eq(logs.workerName, workerName))
+        .orderBy(desc(logs.timestamp));
+    }
+
+    const results = await query.limit(parseInt(limit, 10)).offset(parseInt(offset, 10)).execute();
+
+    return c.json(results, 200);
+  },
+);
+
+logsRouter.get("/legacy/metrics", async (c) => {
+  const db = drizzle(c.env.DB);
+  const results = await db
+    .select({
+      workerName: logs.workerName,
+      level: logs.level,
+      count: sql<number>`count(*)`.as("count"),
+    })
+    .from(logs)
+    .groupBy(logs.workerName, logs.level)
+    .execute();
+
+  return c.json(results, 200);
 });
 
 export { logsRouter };
