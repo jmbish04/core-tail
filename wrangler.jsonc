@@ -30,6 +30,12 @@
   "ai": {
     "binding": "AI",
   },
+  "kv_namespaces": [
+    {
+      "binding": "SESSIONS",
+      "id": "498412f3e70e4669b6e29e5203a29dac"
+    }
+  ],
   "d1_databases": [
     {
       "binding": "DB",
