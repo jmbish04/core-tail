@@ -1,5 +1,5 @@
 {
-  "name": "core-template-cfw-assets-astro-shadcn",
+  "name": "core-tail",
   "main": "dist/_worker.js/index.js",
   "compatibility_date": "2026-03-09",
   "compatibility_flags": ["nodejs_compat"],
@@ -38,13 +38,17 @@
       "tag": "v1",
       "new_sqlite_classes": ["LogAnalyzerAgent"],
     },
+  "kv_namespaces": [
+    {
+      "binding": "SESSIONS",
+      "id": "498412f3e70e4669b6e29e5203a29dac"
+    }
   ],
   "d1_databases": [
     {
       "binding": "DB",
-      "database_name": "core-template-cfw-assets-astro-shadcn",
-      "database_id": "d126139f-6f57-49d2-bbc4-d20bbd46bbf4",
-      "preview_database_id": "d126139f-6f57-49d2-bbc4-d20bbd46bbf4",
+      "database_name": "core-tail",
+      "database_id": "075ddcca-fae4-478f-9313-e808004d3375",
       "migrations_dir": "drizzle",
     },
   ],

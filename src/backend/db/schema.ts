@@ -155,4 +155,17 @@ export const documents = sqliteTable("documents", {
   updatedAt: integer("updated_at", { mode: "timestamp" })
     .notNull()
     .default(sql`(unixepoch())`),
+import { sqliteTable, text, integer } from 'drizzle-orm/sqlite-core';
+import { sql } from 'drizzle-orm';
+
+export const workerLogs = sqliteTable('worker_logs', {
+  id: integer('id').primary key({ autoIncrement: true }),
+  workerName: text('worker_name').notNull(),
+  eventTimestamp: integer('event_timestamp', { mode: 'timestamp' })
+    .default(sql`(strftime('%s', 'now'))`),
+  outcome: text('outcome'), // 'ok', 'exception', 'canceled'
+  scriptName: text('script_name'),
+  logs: text('logs'), // Stringified JSON
+  exceptions: text('exceptions'), // Stringified JSON
+  statusCode: integer('status_code'),
 });
