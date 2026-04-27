@@ -26,7 +26,7 @@ export function WorkerStats({ workerName }: WorkerStatsProps) {
 
   async function loadStats() {
     try {
-      const res = await fetch('/api/logs/stats');
+      const res = await fetch(`/api/logs/stats?workerName=${encodeURIComponent(workerName)}`);
       const data = await res.json();
       const workerStats = data.byWorker[workerName] || {};
 

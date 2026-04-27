@@ -12,6 +12,19 @@ import { getLogsRoute, getWorkersListRoute, getLogsStatsRoute, getLogByIdRoute }
 const logsRouter = new OpenAPIHono<{ Bindings: Bindings }>();
 
 /**
+ * Safely parse JSON with fallback to null on error
+ */
+function safeJsonParse(jsonString: string | null): any {
+  if (!jsonString) return null;
+  try {
+    return JSON.parse(jsonString);
+  } catch (error) {
+    console.error('Failed to parse JSON:', error);
+    return null;
+  }
+}
+
+/**
  * GET /api/logs
  * Get filtered worker logs
  */
@@ -34,20 +47,31 @@ logsRouter.openapi(getLogsRoute, async (c) => {
     conditions.push(gte(workerLogs.eventTimestamp, sinceDate));
   }
 
+  const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
+
+  // Get total count for pagination
+  const [countResult] = await db
+    .select({ count: sql<number>`count(*)`.as('count') })
+    .from(workerLogs)
+    .where(whereClause);
+
+  const totalCount = Number(countResult.count);
+
+  // Get paginated logs
   const logs = await db
     .select()
     .from(workerLogs)
-    .where(conditions.length > 0 ? and(...conditions) : undefined)
+    .where(whereClause)
     .orderBy(desc(workerLogs.eventTimestamp))
     .limit(limit)
     .offset(offset);
 
-  // Parse JSON fields
+  // Parse JSON fields with error handling
   const parsedLogs = logs.map(log => ({
     ...log,
     eventTimestamp: log.eventTimestamp.toISOString(),
-    logs: log.logs ? JSON.parse(log.logs) : null,
-    exceptions: log.exceptions ? JSON.parse(log.exceptions) : null,
+    logs: safeJsonParse(log.logs),
+    exceptions: safeJsonParse(log.exceptions),
   }));
 
   return c.json({
@@ -55,7 +79,7 @@ logsRouter.openapi(getLogsRoute, async (c) => {
     pagination: {
       limit,
       offset,
-      total: logs.length,
+      total: totalCount,
     },
   });
 });
@@ -82,7 +106,11 @@ logsRouter.openapi(getWorkersListRoute, async (c) => {
  * Get error rate statistics
  */
 logsRouter.openapi(getLogsStatsRoute, async (c) => {
+  const { workerName } = c.req.valid('query');
   const db = drizzle(c.env.DB);
+
+  // Build where clause for optional workerName filter
+  const whereClause = workerName ? eq(workerLogs.workerName, workerName) : undefined;
 
   // Get total counts by outcome
   const outcomeCounts = await db
@@ -91,6 +119,7 @@ logsRouter.openapi(getLogsStatsRoute, async (c) => {
       count: sql<number>`count(*)`.as('count'),
     })
     .from(workerLogs)
+    .where(whereClause)
     .groupBy(workerLogs.outcome);
 
   // Get counts per worker
@@ -101,6 +130,7 @@ logsRouter.openapi(getLogsStatsRoute, async (c) => {
       count: sql<number>`count(*)`.as('count'),
     })
     .from(workerLogs)
+    .where(whereClause)
     .groupBy(workerLogs.workerName, workerLogs.outcome);
 
   // Calculate error rates
@@ -153,8 +183,8 @@ logsRouter.openapi(getLogByIdRoute, async (c) => {
   const parsedLog = {
     ...log[0],
     eventTimestamp: log[0].eventTimestamp.toISOString(),
-    logs: log[0].logs ? JSON.parse(log[0].logs) : null,
-    exceptions: log[0].exceptions ? JSON.parse(log[0].exceptions) : null,
+    logs: safeJsonParse(log[0].logs),
+    exceptions: safeJsonParse(log[0].exceptions),
   };
 
   return c.json({ log: parsedLog });

@@ -90,6 +90,11 @@ const getLogsStatsRoute = createRoute({
   tags: ['Logs'],
   operationId: 'getLogsStats',
   summary: 'Get error rate statistics',
+  request: {
+    query: z.object({
+      workerName: z.string().optional().openapi({ description: 'Filter stats by worker name' }),
+    }),
+  },
   responses: {
     200: {
       content: {
