@@ -24,17 +24,17 @@ logsRouter.get(
     const db = drizzle(c.env.DB);
     const { workerName, limit, offset } = c.req.valid("query");
 
-    let query: any = db.select().from(logs).orderBy(desc(logs.timestamp));
+    let query = db.select().from(logs).$dynamic();
 
     if (workerName) {
-      query = db
-        .select()
-        .from(logs)
-        .where(eq(logs.workerName, workerName))
-        .orderBy(desc(logs.timestamp));
+      query = query.where(eq(logs.workerName, workerName));
     }
 
-    const results = await query.limit(parseInt(limit, 10)).offset(parseInt(offset, 10)).execute();
+    const results = await query
+      .orderBy(desc(logs.timestamp))
+      .limit(parseInt(limit, 10))
+      .offset(parseInt(offset, 10))
+      .execute();
 
     return c.json(results, 200);
   },
