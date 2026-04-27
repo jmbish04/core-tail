@@ -1,85 +1,70 @@
 /**
- * @fileoverview API routes for worker logs
- *
- * Provides endpoints for querying worker logs, listing workers, and getting error statistics.
+ * @fileoverview API routes for worker logs with OpenAPI integration
  */
 
-import { Hono } from 'hono';
-import { zValidator } from '@hono/zod-validator';
-import { z } from 'zod';
+import { OpenAPIHono } from '@hono/zod-openapi';
 import { drizzle } from 'drizzle-orm/d1';
 import { workerLogs } from '../../db/schema';
 import { desc, eq, sql, and, gte } from 'drizzle-orm';
 import type { Bindings } from '../index';
+import { getLogsRoute, getWorkersListRoute, getLogsStatsRoute, getLogByIdRoute } from './openapi';
 
-const logsRouter = new Hono<{ Bindings: Bindings }>();
-
-// Query params schema for filtering logs
-const getLogsSchema = z.object({
-  workerName: z.string().optional(),
-  outcome: z.enum(['ok', 'exception', 'canceled', 'exceededCpu', 'exceededMemory', 'unknown']).optional(),
-  limit: z.string().transform(Number).pipe(z.number().int().min(1).max(1000)).optional().default('100'),
-  offset: z.string().transform(Number).pipe(z.number().int().min(0)).optional().default('0'),
-  since: z.string().datetime().optional(), // ISO timestamp
-});
+const logsRouter = new OpenAPIHono<{ Bindings: Bindings }>();
 
 /**
  * GET /api/logs
  * Get filtered worker logs
  */
-logsRouter.get(
-  '/',
-  zValidator('query', getLogsSchema),
-  async (c) => {
-    const { workerName, outcome, limit, offset, since } = c.req.valid('query');
-    const db = drizzle(c.env.DB);
+logsRouter.openapi(getLogsRoute, async (c) => {
+  const { workerName, outcome, limit, offset, since } = c.req.valid('query');
+  const db = drizzle(c.env.DB);
 
-    const conditions = [];
+  const conditions = [];
 
-    if (workerName) {
-      conditions.push(eq(workerLogs.workerName, workerName));
-    }
-
-    if (outcome) {
-      conditions.push(eq(workerLogs.outcome, outcome));
-    }
-
-    if (since) {
-      const sinceDate = new Date(since);
-      conditions.push(gte(workerLogs.eventTimestamp, sinceDate));
-    }
-
-    const logs = await db
-      .select()
-      .from(workerLogs)
-      .where(conditions.length > 0 ? and(...conditions) : undefined)
-      .orderBy(desc(workerLogs.eventTimestamp))
-      .limit(limit)
-      .offset(offset);
-
-    // Parse JSON fields
-    const parsedLogs = logs.map(log => ({
-      ...log,
-      logs: log.logs ? JSON.parse(log.logs) : null,
-      exceptions: log.exceptions ? JSON.parse(log.exceptions) : null,
-    }));
-
-    return c.json({
-      logs: parsedLogs,
-      pagination: {
-        limit,
-        offset,
-        total: logs.length,
-      },
-    });
+  if (workerName) {
+    conditions.push(eq(workerLogs.workerName, workerName));
   }
-);
+
+  if (outcome) {
+    conditions.push(eq(workerLogs.outcome, outcome));
+  }
+
+  if (since) {
+    const sinceDate = new Date(since);
+    conditions.push(gte(workerLogs.eventTimestamp, sinceDate));
+  }
+
+  const logs = await db
+    .select()
+    .from(workerLogs)
+    .where(conditions.length > 0 ? and(...conditions) : undefined)
+    .orderBy(desc(workerLogs.eventTimestamp))
+    .limit(limit)
+    .offset(offset);
+
+  // Parse JSON fields
+  const parsedLogs = logs.map(log => ({
+    ...log,
+    eventTimestamp: log.eventTimestamp.toISOString(),
+    logs: log.logs ? JSON.parse(log.logs) : null,
+    exceptions: log.exceptions ? JSON.parse(log.exceptions) : null,
+  }));
+
+  return c.json({
+    logs: parsedLogs,
+    pagination: {
+      limit,
+      offset,
+      total: logs.length,
+    },
+  });
+});
 
 /**
  * GET /api/logs/workers
  * Get list of unique worker names
  */
-logsRouter.get('/workers', async (c) => {
+logsRouter.openapi(getWorkersListRoute, async (c) => {
   const db = drizzle(c.env.DB);
 
   const workers = await db
@@ -96,7 +81,7 @@ logsRouter.get('/workers', async (c) => {
  * GET /api/logs/stats
  * Get error rate statistics
  */
-logsRouter.get('/stats', async (c) => {
+logsRouter.openapi(getLogsStatsRoute, async (c) => {
   const db = drizzle(c.env.DB);
 
   // Get total counts by outcome
@@ -151,8 +136,8 @@ logsRouter.get('/stats', async (c) => {
  * GET /api/logs/:id
  * Get a specific log entry by ID
  */
-logsRouter.get('/:id', async (c) => {
-  const id = parseInt(c.req.param('id'));
+logsRouter.openapi(getLogByIdRoute, async (c) => {
+  const { id } = c.req.valid('param');
   const db = drizzle(c.env.DB);
 
   const log = await db
@@ -167,6 +152,7 @@ logsRouter.get('/:id', async (c) => {
 
   const parsedLog = {
     ...log[0],
+    eventTimestamp: log[0].eventTimestamp.toISOString(),
     logs: log[0].logs ? JSON.parse(log[0].logs) : null,
     exceptions: log[0].exceptions ? JSON.parse(log[0].exceptions) : null,
   };
