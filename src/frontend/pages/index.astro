@@ -1,12 +1,19 @@
 ---
-import { ComponentExample } from "@/components/ComponentExample";
-import BaseLayout from "@/layouts/BaseLayout.astro";
-import { siteConfig } from "@/lib/config";
+import BaseLayout from '../layouts/BaseLayout.astro';
+
+// If SSR is active and routing correctly, redirect immediately to the dashboard
+if (Astro.request.method === 'GET') {
+  return Astro.redirect('/dashboard');
+}
 ---
 
-<BaseLayout
-  title={siteConfig.name}
-  description={siteConfig.description}
->
-  <ComponentExample client:load />
+<BaseLayout title="core-tail">
+  <div class="flex items-center justify-center min-h-screen bg-background text-foreground">
+    <div class="text-center">
+      <h1 class="text-4xl font-bold tracking-tight mb-4">core-tail</h1>
+      <p class="text-muted-foreground mb-6">Redirecting to your dashboard...</p>
+      <meta http-equiv="refresh" content="0;url=/dashboard" />
+      <a href="/dashboard" class="text-primary hover:underline">Click here if you are not redirected</a>
+    </div>
+  </div>
 </BaseLayout>

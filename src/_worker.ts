@@ -10,23 +10,28 @@ import type { TailEvent, TraceEvent } from './backend/types';
 import { drizzle } from 'drizzle-orm/d1';
 import { workerLogs } from './backend/db/schema';
 
+// Import the Astro SSR handler
+// @ts-ignore - This path is generated at build time by Astro
+import astroHandler from '../dist/_worker.js/index.js';
+
 const handler: ExportedHandler<Bindings> = {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
 
-    // Handle API and Documentation routes
+    // Handle API and Documentation routes via Hono
     if (
-      url.pathname.startsWith('/api/') || 
-      url.pathname === '/openapi.json' || 
-      url.pathname === '/swagger' || 
-      url.pathname === '/scalar' || 
+      url.pathname.startsWith('/api/') ||
+      url.pathname === '/openapi.json' ||
+      url.pathname === '/swagger' ||
+      url.pathname === '/scalar' ||
       url.pathname === '/docs'
     ) {
       return honoApp.fetch(request, env, ctx);
     }
 
-    // Let Astro handle everything else via the ASSETS binding
-    return env.ASSETS.fetch(request);
+    // For all other routes, delegate to the Astro SSR handler for dynamic rendering
+    // The Astro handler will render pages like /dashboard, /setup, /worker/[name]
+    return astroHandler(request, env, ctx);
   },
 
   async tail(events: TailEvent, env: Bindings, ctx: ExecutionContext) {
