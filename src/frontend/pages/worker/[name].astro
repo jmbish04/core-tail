@@ -1,0 +1,11 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { WorkerDetail } from '../../components/worker/WorkerDetail';
+
+const { name } = Astro.params;
+const workerName = decodeURIComponent(name || '');
+---
+
+<BaseLayout title={`Worker: ${workerName}`}>
+  <WorkerDetail client:load workerName={workerName} />
+</BaseLayout>

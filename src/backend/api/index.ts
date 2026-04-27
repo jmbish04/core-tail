@@ -3,7 +3,6 @@
  *
  * This file sets up the main Hono application with all API routes and middleware.
  */
-
 import type { D1Database, Ai } from "@cloudflare/workers-types";
 
 import { Hono } from "hono";
@@ -19,7 +18,7 @@ import { documentsRouter } from "./routes/documents";
 import { healthRouter } from "./routes/health";
 import { logsRouter } from "./routes/logs";
 import { notificationsRouter } from "./routes/notifications";
-import { openapiRouter } from "./routes/openapi";
+import { openapiApp } from "./routes/openapi";
 import { threadsRouter } from "./routes/threads";
 
 export type Bindings = {
@@ -30,6 +29,7 @@ export type Bindings = {
   WEBHOOK_SECRET?: string;
   GEMINI_API_KEY?: string;
   LOG_ANALYZER_AGENT: any; // DurableObjectNamespace
+  ASSETS: any;
 };
 
 export type Variables = {
@@ -65,6 +65,6 @@ app.route("/api/logs", logsRouter);
 app.use("/api/analysis/*", authMiddleware);
 app.route("/api/analysis", analysisRouter);
 
-app.route("/", openapiRouter);
+app.route("/", openapiApp);
 
 export { app };
