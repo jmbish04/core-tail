@@ -15,13 +15,15 @@ import { healthRouter } from './routes/health';
 import { notificationsRouter } from './routes/notifications';
 import { aiRouter } from './routes/ai';
 import { documentsRouter } from './routes/documents';
-import { openapiRouter } from './routes/openapi';
+import { openapiApp } from './routes/openapi';
+import { logsRouter } from './routes/logs';
 
 export type Bindings = {
   DB: D1Database;
   AI: Ai;
   AI_GATEWAY_TOKEN?: string;
   CLOUDFLARE_ACCOUNT_ID?: string;
+  ASSETS: any;
 };
 
 export type Variables = {
@@ -50,6 +52,7 @@ app.route('/api/health', healthRouter);
 app.route('/api/notifications', notificationsRouter);
 app.route('/api/ai', aiRouter);
 app.route('/api/documents', documentsRouter);
-app.route('/', openapiRouter);
+app.route('/api/logs', logsRouter);
+app.route('/', openapiApp);
 
 export { app };
