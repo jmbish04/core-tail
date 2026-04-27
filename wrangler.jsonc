@@ -49,7 +49,7 @@
     {
       "binding": "DB",
       "database_name": "core-tail",
-      "database_id": "d126139f-6f57-49d2-bbc4-d20bbd46bbf4",
+      "database_id": "471a952a-2551-493b-abfd-cebd36babddf",
       "migrations_dir": "drizzle",
     },
   ],
