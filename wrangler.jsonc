@@ -50,7 +50,6 @@
       "binding": "DB",
       "database_name": "core-tail",
       "database_id": "d126139f-6f57-49d2-bbc4-d20bbd46bbf4",
-      "preview_database_id": "d126139f-6f57-49d2-bbc4-d20bbd46bbf4",
       "migrations_dir": "drizzle",
     },
   ],
