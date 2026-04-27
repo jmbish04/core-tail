@@ -1,4 +1,4 @@
-CREATE TABLE `worker_logs` (
+CREATE TABLE IF NOT EXISTS `worker_logs` (
 	`id` integer PRIMARY KEY AUTOINCREMENT NOT NULL,
 	`worker_name` text NOT NULL,
 	`event_timestamp` integer NOT NULL,
