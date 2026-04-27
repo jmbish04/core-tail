@@ -20,7 +20,7 @@ const getLogsSchema = z.object({
   outcome: z.enum(['ok', 'exception', 'canceled', 'exceededCpu', 'exceededMemory', 'unknown']).optional(),
   limit: z.string().transform(Number).pipe(z.number().int().min(1).max(1000)).optional().default('100'),
   offset: z.string().transform(Number).pipe(z.number().int().min(0)).optional().default('0'),
-  since: z.string().optional(), // ISO timestamp
+  since: z.string().datetime().optional(), // ISO timestamp
 });
 
 /**
