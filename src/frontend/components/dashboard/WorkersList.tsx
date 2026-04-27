@@ -1,6 +1,5 @@
-import * as React from "react";
-
-import { Card } from "../ui/card";
+import * as React from 'react';
+import { Card } from '../ui/card';
 
 interface Worker {
   name: string;
@@ -22,11 +21,11 @@ export function WorkersList({ stats }: WorkersListProps) {
 
   async function loadWorkers() {
     try {
-      const res = await fetch("/api/logs/workers");
+      const res = await fetch('/api/logs/workers');
       const data = await res.json();
       setWorkers(data.workers);
     } catch (error) {
-      console.error("Error loading workers:", error);
+      console.error('Error loading workers:', error);
     } finally {
       setLoading(false);
     }
@@ -46,7 +45,7 @@ export function WorkersList({ stats }: WorkersListProps) {
         const workerStats = stats?.byWorker?.[worker] || {};
         const total = Object.values(workerStats).reduce(
           (sum: number, count: any) => sum + count,
-          0,
+          0
         );
         const errors =
           (workerStats.exception || 0) +

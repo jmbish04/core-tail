@@ -1,6 +1,5 @@
-import * as React from "react";
-
-import { Card } from "../ui/card";
+import * as React from 'react';
+import { Card } from '../ui/card';
 
 interface LogEntry {
   id: number;
@@ -24,7 +23,7 @@ export function LogsTable({ workerName, outcomeFilter }: LogsTableProps) {
   const [selectedLog, setSelectedLog] = React.useState<LogEntry | null>(null);
   const [showModal, setShowModal] = React.useState(false);
   const pageSize = 50;
-  const [currentPage, setCurrentPage] = React.useState(0);
+const [currentPage, setCurrentPage] = React.useState(0);
 
   React.useEffect(() => {
     loadLogs();
@@ -38,7 +37,7 @@ export function LogsTable({ workerName, outcomeFilter }: LogsTableProps) {
     });
 
     if (outcomeFilter) {
-      params.append("outcome", outcomeFilter);
+      params.append('outcome', outcomeFilter);
     }
 
     try {
@@ -47,7 +46,7 @@ export function LogsTable({ workerName, outcomeFilter }: LogsTableProps) {
       const data = await res.json();
       setLogs(data.logs);
     } catch (error) {
-      console.error("Error loading logs:", error);
+      console.error('Error loading logs:', error);
     } finally {
       setLoading(false);
     }
@@ -60,16 +59,20 @@ export function LogsTable({ workerName, outcomeFilter }: LogsTableProps) {
       setSelectedLog(data.log);
       setShowModal(true);
     } catch (error) {
-      console.error("Error loading log details:", error);
+      console.error('Error loading log details:', error);
     }
   }
 
   if (loading) {
-    return <p className="text-center py-8 text-gray-500">Loading logs...</p>;
+    return (
+      <p className="text-center py-8 text-gray-500">Loading logs...</p>
+    );
   }
 
   if (logs.length === 0) {
-    return <p className="text-center py-8 text-gray-500">No logs found</p>;
+    return (
+      <p className="text-center py-8 text-gray-500">No logs found</p>
+    );
   }
 
   return (
@@ -89,17 +92,25 @@ export function LogsTable({ workerName, outcomeFilter }: LogsTableProps) {
           <tbody>
             {logs.map((log) => {
               const timestamp = new Date(log.eventTimestamp).toLocaleString();
-              const outcomeColor = log.outcome === "ok" ? "text-green-600" : "text-red-600";
+              const outcomeColor =
+                log.outcome === 'ok' ? 'text-green-600' : 'text-red-600';
 
               return (
-                <tr key={log.id} className="border-b hover:bg-gray-50 dark:hover:bg-gray-800">
+                <tr
+                  key={log.id}
+                  className="border-b hover:bg-gray-50 dark:hover:bg-gray-800"
+                >
                   <td className="py-3 px-4 text-sm">{timestamp}</td>
                   <td className="py-3 px-4">
-                    <span className={`${outcomeColor} font-medium`}>{log.outcome}</span>
+                    <span className={`${outcomeColor} font-medium`}>
+                      {log.outcome}
+                    </span>
                   </td>
-                  <td className="py-3 px-4">{log.statusCode || "-"}</td>
-                  <td className="py-3 px-4">{log.requestMethod || "-"}</td>
-                  <td className="py-3 px-4 max-w-xs truncate">{log.requestUrl || "-"}</td>
+                  <td className="py-3 px-4">{log.statusCode || '-'}</td>
+                  <td className="py-3 px-4">{log.requestMethod || '-'}</td>
+                  <td className="py-3 px-4 max-w-xs truncate">
+                    {log.requestUrl || '-'}
+                  </td>
                   <td className="py-3 px-4">
                     <button
                       onClick={() => showLogDetails(log.id)}
@@ -143,7 +154,7 @@ export function LogsTable({ workerName, outcomeFilter }: LogsTableProps) {
                   <p>
                     {selectedLog.requestMethod} {selectedLog.requestUrl}
                   </p>
-                  <p>Status: {selectedLog.statusCode || "N/A"}</p>
+                  <p>Status: {selectedLog.statusCode || 'N/A'}</p>
                 </div>
               )}
               {selectedLog.logs && selectedLog.logs.length > 0 && (

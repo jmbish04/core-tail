@@ -1,6 +1,5 @@
-import * as React from "react";
-
-import { Card } from "../ui/card";
+import * as React from 'react';
+import { Card } from '../ui/card';
 
 interface WorkerStatsProps {
   workerName: string;
@@ -31,7 +30,10 @@ export function WorkerStats({ workerName }: WorkerStatsProps) {
       const data = await res.json();
       const workerStats = data.byWorker[workerName] || {};
 
-      const total = Object.values(workerStats).reduce((sum: number, count: any) => sum + count, 0);
+      const total = Object.values(workerStats).reduce(
+        (sum: number, count: any) => sum + count,
+        0
+      );
       const success = workerStats.ok || 0;
       const exceptions = workerStats.exception || 0;
       const other =
@@ -42,7 +44,7 @@ export function WorkerStats({ workerName }: WorkerStatsProps) {
 
       setStats({ total, success, exceptions, other });
     } catch (error) {
-      console.error("Error loading worker stats:", error);
+      console.error('Error loading worker stats:', error);
     }
   }
 

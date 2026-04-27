@@ -1,13 +1,12 @@
-import * as React from "react";
-
-import { Card } from "../ui/card";
+import { Card } from '../ui/card';
+import * as React from 'react';
 
 interface LogFiltersProps {
   onApply: (outcome: string) => void;
 }
 
 export function LogFilters({ onApply }: LogFiltersProps) {
-  const [outcome, setOutcome] = React.useState("");
+  const [outcome, setOutcome] = React.useState('');
 
   const handleApply = () => {
     onApply(outcome);

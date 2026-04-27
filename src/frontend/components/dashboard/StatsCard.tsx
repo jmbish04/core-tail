@@ -1,4 +1,4 @@
-import { Card } from "../ui/card";
+import { Card } from '../ui/card';
 
 interface StatsCardProps {
   title: string;
@@ -6,7 +6,7 @@ interface StatsCardProps {
   className?: string;
 }
 
-export function StatsCard({ title, value, className = "" }: StatsCardProps) {
+export function StatsCard({ title, value, className = '' }: StatsCardProps) {
   return (
     <Card className={`p-6 ${className}`}>
       <h3 className="text-sm font-medium text-gray-500 mb-2">{title}</h3>
