@@ -1,0 +1,111 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { Card } from '../components/ui/card';
+---
+
+<BaseLayout title="Worker Logs Dashboard">
+  <div class="container mx-auto py-8 px-4">
+    <h1 class="text-4xl font-bold mb-8">Worker Logs Dashboard</h1>
+
+    <!-- Global Stats -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+      <Card className="p-6">
+        <h3 class="text-sm font-medium text-gray-500 mb-2">Total Logs</h3>
+        <p class="text-3xl font-bold" id="total-logs">-</p>
+      </Card>
+      <Card className="p-6">
+        <h3 class="text-sm font-medium text-gray-500 mb-2">Error Count</h3>
+        <p class="text-3xl font-bold text-red-600" id="error-count">-</p>
+      </Card>
+      <Card className="p-6">
+        <h3 class="text-sm font-medium text-gray-500 mb-2">Error Rate</h3>
+        <p class="text-3xl font-bold text-red-600" id="error-rate">-%</p>
+      </Card>
+    </div>
+
+    <!-- Workers List -->
+    <Card className="p-6 mb-8">
+      <h2 class="text-2xl font-bold mb-4">Workers</h2>
+      <div id="workers-list" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <p class="text-gray-500">Loading workers...</p>
+      </div>
+    </Card>
+
+    <!-- Recent Errors -->
+    <Card className="p-6">
+      <h2 class="text-2xl font-bold mb-4">Recent Errors</h2>
+      <div id="recent-errors" class="space-y-4">
+        <p class="text-gray-500">Loading recent errors...</p>
+      </div>
+    </Card>
+  </div>
+
+  <script>
+    async function loadDashboard() {
+      try {
+        // Load stats
+        const statsRes = await fetch('/api/logs/stats');
+        const statsData = await statsRes.json();
+
+        document.getElementById('total-logs')!.textContent = statsData.overview.totalLogs.toString();
+        document.getElementById('error-count')!.textContent = statsData.overview.errorCount.toString();
+        document.getElementById('error-rate')!.textContent = statsData.overview.errorRate.toFixed(2) + '%';
+
+        // Load workers
+        const workersRes = await fetch('/api/logs/workers');
+        const workersData = await workersRes.json();
+
+        const workersList = document.getElementById('workers-list')!;
+        if (workersData.workers.length === 0) {
+          workersList.innerHTML = '<p class="text-gray-500">No workers found</p>';
+        } else {
+          workersList.innerHTML = workersData.workers.map((worker: string) => {
+            const workerStats = statsData.byWorker[worker] || {};
+            const total = Object.values(workerStats).reduce((sum: number, count: any) => sum + count, 0);
+            const errors = (workerStats.exception || 0) + (workerStats.exceededCpu || 0) + (workerStats.exceededMemory || 0);
+
+            return `
+              <a href="/worker/${encodeURIComponent(worker)}" class="block p-4 border rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
+                <h3 class="font-semibold mb-2">${worker}</h3>
+                <div class="text-sm text-gray-500">
+                  <p>Total: ${total}</p>
+                  <p class="text-red-600">Errors: ${errors}</p>
+                </div>
+              </a>
+            `;
+          }).join('');
+        }
+
+        // Load recent errors
+        const errorsRes = await fetch('/api/logs?outcome=exception&limit=10');
+        const errorsData = await errorsRes.json();
+
+        const recentErrors = document.getElementById('recent-errors')!;
+        if (errorsData.logs.length === 0) {
+          recentErrors.innerHTML = '<p class="text-gray-500">No recent errors</p>';
+        } else {
+          recentErrors.innerHTML = errorsData.logs.map((log: any) => {
+            const timestamp = new Date(log.eventTimestamp).toLocaleString();
+            const exceptions = log.exceptions || [];
+            const firstException = exceptions[0] || { name: 'Unknown', message: 'No details available' };
+
+            return `
+              <div class="border-l-4 border-red-500 pl-4 py-2">
+                <div class="flex justify-between items-start mb-1">
+                  <span class="font-semibold">${log.workerName}</span>
+                  <span class="text-sm text-gray-500">${timestamp}</span>
+                </div>
+                <p class="text-sm text-gray-700 dark:text-gray-300">${firstException.name}: ${firstException.message}</p>
+                <a href="/worker/${encodeURIComponent(log.workerName)}" class="text-sm text-blue-600 hover:underline">View details →</a>
+              </div>
+            `;
+          }).join('');
+        }
+      } catch (error) {
+        console.error('Error loading dashboard:', error);
+      }
+    }
+
+    loadDashboard();
+  </script>
+</BaseLayout>

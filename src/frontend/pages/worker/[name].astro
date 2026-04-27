@@ -1,0 +1,226 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { Card } from '../../components/ui/card';
+
+const { name } = Astro.params;
+const workerName = decodeURIComponent(name || '');
+---
+
+<BaseLayout title={`Worker: ${workerName}`}>
+  <div class="container mx-auto py-8 px-4">
+    <div class="mb-6">
+      <a href="/dashboard" class="text-blue-600 hover:underline mb-2 inline-block">← Back to Dashboard</a>
+      <h1 class="text-4xl font-bold">{workerName}</h1>
+    </div>
+
+    <!-- Worker Stats -->
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+      <Card className="p-4">
+        <h3 class="text-sm font-medium text-gray-500 mb-2">Total Logs</h3>
+        <p class="text-2xl font-bold" id="worker-total">-</p>
+      </Card>
+      <Card className="p-4">
+        <h3 class="text-sm font-medium text-gray-500 mb-2">Success</h3>
+        <p class="text-2xl font-bold text-green-600" id="worker-success">-</p>
+      </Card>
+      <Card className="p-4">
+        <h3 class="text-sm font-medium text-gray-500 mb-2">Exceptions</h3>
+        <p class="text-2xl font-bold text-red-600" id="worker-exceptions">-</p>
+      </Card>
+      <Card className="p-4">
+        <h3 class="text-sm font-medium text-gray-500 mb-2">Other Errors</h3>
+        <p class="text-2xl font-bold text-orange-600" id="worker-other">-</p>
+      </Card>
+    </div>
+
+    <!-- Filters -->
+    <Card className="p-6 mb-6">
+      <div class="flex gap-4 items-end">
+        <div class="flex-1">
+          <label for="outcome-filter" class="block text-sm font-medium mb-2">Filter by Outcome</label>
+          <select id="outcome-filter" class="w-full px-3 py-2 border rounded-lg dark:bg-gray-800">
+            <option value="">All</option>
+            <option value="ok">OK</option>
+            <option value="exception">Exception</option>
+            <option value="canceled">Canceled</option>
+            <option value="exceededCpu">Exceeded CPU</option>
+            <option value="exceededMemory">Exceeded Memory</option>
+            <option value="unknown">Unknown</option>
+          </select>
+        </div>
+        <button id="apply-filters" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+          Apply
+        </button>
+      </div>
+    </Card>
+
+    <!-- Logs Table -->
+    <Card className="p-6">
+      <h2 class="text-2xl font-bold mb-4">Logs</h2>
+      <div class="overflow-x-auto">
+        <table class="w-full">
+          <thead>
+            <tr class="border-b">
+              <th class="text-left py-3 px-4">Timestamp</th>
+              <th class="text-left py-3 px-4">Outcome</th>
+              <th class="text-left py-3 px-4">Status</th>
+              <th class="text-left py-3 px-4">Method</th>
+              <th class="text-left py-3 px-4">URL</th>
+              <th class="text-left py-3 px-4">Details</th>
+            </tr>
+          </thead>
+          <tbody id="logs-table-body">
+            <tr>
+              <td colspan="6" class="text-center py-8 text-gray-500">Loading logs...</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div id="pagination" class="mt-4 flex justify-center gap-2"></div>
+    </Card>
+
+    <!-- Log Detail Modal -->
+    <div id="log-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+      <Card className="max-w-4xl w-full max-h-[90vh] overflow-auto p-6">
+        <div class="flex justify-between items-start mb-4">
+          <h3 class="text-2xl font-bold">Log Details</h3>
+          <button id="close-modal" class="text-gray-500 hover:text-gray-700 text-2xl">×</button>
+        </div>
+        <div id="log-detail-content"></div>
+      </Card>
+    </div>
+  </div>
+
+  <script define:vars={{ workerName }}>
+    let currentPage = 0;
+    const pageSize = 50;
+
+    async function loadWorkerStats() {
+      try {
+        const res = await fetch('/api/logs/stats');
+        const data = await res.json();
+        const stats = data.byWorker[workerName] || {};
+
+        const total = Object.values(stats).reduce((sum, count) => sum + count, 0);
+        document.getElementById('worker-total')!.textContent = total.toString();
+        document.getElementById('worker-success')!.textContent = (stats.ok || 0).toString();
+        document.getElementById('worker-exceptions')!.textContent = (stats.exception || 0).toString();
+        const other = (stats.canceled || 0) + (stats.exceededCpu || 0) + (stats.exceededMemory || 0) + (stats.unknown || 0);
+        document.getElementById('worker-other')!.textContent = other.toString();
+      } catch (error) {
+        console.error('Error loading worker stats:', error);
+      }
+    }
+
+    async function loadLogs() {
+      const outcomeFilter = (document.getElementById('outcome-filter') as HTMLSelectElement).value;
+      const params = new URLSearchParams({
+        workerName,
+        limit: pageSize.toString(),
+        offset: (currentPage * pageSize).toString(),
+      });
+
+      if (outcomeFilter) {
+        params.append('outcome', outcomeFilter);
+      }
+
+      try {
+        const res = await fetch(`/api/logs?${params}`);
+        const data = await res.json();
+
+        const tbody = document.getElementById('logs-table-body')!;
+        if (data.logs.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="6" class="text-center py-8 text-gray-500">No logs found</td></tr>';
+          return;
+        }
+
+        tbody.innerHTML = data.logs.map((log: any) => {
+          const timestamp = new Date(log.eventTimestamp).toLocaleString();
+          const outcomeColor = log.outcome === 'ok' ? 'text-green-600' : 'text-red-600';
+
+          return `
+            <tr class="border-b hover:bg-gray-50 dark:hover:bg-gray-800">
+              <td class="py-3 px-4 text-sm">${timestamp}</td>
+              <td class="py-3 px-4"><span class="${outcomeColor} font-medium">${log.outcome}</span></td>
+              <td class="py-3 px-4">${log.statusCode || '-'}</td>
+              <td class="py-3 px-4">${log.requestMethod || '-'}</td>
+              <td class="py-3 px-4 max-w-xs truncate">${log.requestUrl || '-'}</td>
+              <td class="py-3 px-4">
+                <button class="view-details text-blue-600 hover:underline" data-log-id="${log.id}">
+                  View
+                </button>
+              </td>
+            </tr>
+          `;
+        }).join('');
+
+        // Add event listeners to view buttons
+        document.querySelectorAll('.view-details').forEach(btn => {
+          btn.addEventListener('click', (e) => {
+            const logId = (e.target as HTMLElement).dataset.logId;
+            showLogDetails(logId!);
+          });
+        });
+      } catch (error) {
+        console.error('Error loading logs:', error);
+      }
+    }
+
+    async function showLogDetails(logId: string) {
+      try {
+        const res = await fetch(`/api/logs/${logId}`);
+        const data = await res.json();
+        const log = data.log;
+
+        const content = document.getElementById('log-detail-content')!;
+        content.innerHTML = `
+          <div class="space-y-4">
+            <div>
+              <h4 class="font-semibold mb-1">Timestamp</h4>
+              <p>${new Date(log.eventTimestamp).toLocaleString()}</p>
+            </div>
+            <div>
+              <h4 class="font-semibold mb-1">Outcome</h4>
+              <p>${log.outcome}</p>
+            </div>
+            ${log.requestUrl ? `
+              <div>
+                <h4 class="font-semibold mb-1">Request</h4>
+                <p>${log.requestMethod} ${log.requestUrl}</p>
+                <p>Status: ${log.statusCode || 'N/A'}</p>
+              </div>
+            ` : ''}
+            ${log.logs && log.logs.length > 0 ? `
+              <div>
+                <h4 class="font-semibold mb-1">Logs</h4>
+                <pre class="bg-gray-100 dark:bg-gray-900 p-4 rounded overflow-auto text-sm">${JSON.stringify(log.logs, null, 2)}</pre>
+              </div>
+            ` : ''}
+            ${log.exceptions && log.exceptions.length > 0 ? `
+              <div>
+                <h4 class="font-semibold mb-1">Exceptions</h4>
+                <pre class="bg-red-50 dark:bg-red-900 p-4 rounded overflow-auto text-sm">${JSON.stringify(log.exceptions, null, 2)}</pre>
+              </div>
+            ` : ''}
+          </div>
+        `;
+
+        document.getElementById('log-modal')!.classList.remove('hidden');
+      } catch (error) {
+        console.error('Error loading log details:', error);
+      }
+    }
+
+    document.getElementById('close-modal')!.addEventListener('click', () => {
+      document.getElementById('log-modal')!.classList.add('hidden');
+    });
+
+    document.getElementById('apply-filters')!.addEventListener('click', () => {
+      currentPage = 0;
+      loadLogs();
+    });
+
+    loadWorkerStats();
+    loadLogs();
+  </script>
+</BaseLayout>

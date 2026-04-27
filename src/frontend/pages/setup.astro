@@ -1,0 +1,157 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { Card } from '../components/ui/card';
+---
+
+<BaseLayout title="Setup - Tail Consumer Configuration">
+  <div class="container mx-auto py-8 px-4 max-w-4xl">
+    <h1 class="text-4xl font-bold mb-8">Setup Tail Consumer</h1>
+
+    <div class="prose dark:prose-invert max-w-none">
+      <Card className="p-6 mb-6">
+        <h2 class="text-2xl font-bold mb-4">What is a Tail Consumer?</h2>
+        <p class="mb-4">
+          Cloudflare Workers Tail Consumers allow you to receive real-time logs, exceptions, and telemetry
+          from other Workers in your account. This centralized logging system uses the tail consumer feature
+          to collect and store logs from all your Workers in a D1 database.
+        </p>
+      </Card>
+
+      <Card className="p-6 mb-6">
+        <h2 class="text-2xl font-bold mb-4">Prerequisites</h2>
+        <ul class="list-disc pl-6 space-y-2">
+          <li>Cloudflare account with Workers enabled</li>
+          <li>This centralized logging Worker deployed</li>
+          <li>Other Workers you want to monitor</li>
+        </ul>
+      </Card>
+
+      <Card className="p-6 mb-6">
+        <h2 class="text-2xl font-bold mb-4">Step 1: Deploy This Worker</h2>
+        <p class="mb-4">
+          First, ensure this centralized logging Worker is deployed and running:
+        </p>
+        <pre class="bg-gray-100 dark:bg-gray-900 p-4 rounded overflow-auto mb-4"><code>npm run build
+npm run deploy</code></pre>
+        <p class="text-sm text-gray-600 dark:text-gray-400">
+          Note: Make sure your D1 database is created and migrations are applied before deploying.
+        </p>
+      </Card>
+
+      <Card className="p-6 mb-6">
+        <h2 class="text-2xl font-bold mb-4">Step 2: Configure Tail Consumers</h2>
+        <p class="mb-4">
+          For each Worker you want to monitor, add a <code>tail_consumers</code> configuration
+          to its <code>wrangler.toml</code> or <code>wrangler.jsonc</code> file:
+        </p>
+
+        <h3 class="text-xl font-semibold mb-3">Using wrangler.toml:</h3>
+        <pre class="bg-gray-100 dark:bg-gray-900 p-4 rounded overflow-auto mb-4"><code>name = "my-worker"
+main = "src/index.ts"
+compatibility_date = "2024-04-01"
+
+[[tail_consumers]]
+service = "central-log-worker"  # Name of this logging Worker</code></pre>
+
+        <h3 class="text-xl font-semibold mb-3">Using wrangler.jsonc:</h3>
+        <pre class="bg-gray-100 dark:bg-gray-900 p-4 rounded overflow-auto mb-4"><code>{
+  "name": "my-worker",
+  "main": "src/index.ts",
+  "compatibility_date": "2024-04-01",
+  "tail_consumers": [
+    {
+      "service": "central-log-worker"
+    }
+  ]
+}</code></pre>
+      </Card>
+
+      <Card className="p-6 mb-6">
+        <h2 class="text-2xl font-bold mb-4">Step 3: Deploy Your Worker</h2>
+        <p class="mb-4">
+          After adding the tail consumer configuration, deploy your Worker:
+        </p>
+        <pre class="bg-gray-100 dark:bg-gray-900 p-4 rounded overflow-auto mb-4"><code>cd /path/to/your/worker
+wrangler deploy</code></pre>
+        <p class="text-sm text-gray-600 dark:text-gray-400">
+          Once deployed, all logs, exceptions, and telemetry from your Worker will automatically
+          be sent to this centralized logging system.
+        </p>
+      </Card>
+
+      <Card className="p-6 mb-6">
+        <h2 class="text-2xl font-bold mb-4">Step 4: View Your Logs</h2>
+        <p class="mb-4">
+          Navigate to the <a href="/dashboard" class="text-blue-600 hover:underline">Dashboard</a> to see:
+        </p>
+        <ul class="list-disc pl-6 space-y-2 mb-4">
+          <li>Global error rates across all Workers</li>
+          <li>List of all monitored Workers</li>
+          <li>Recent errors and exceptions</li>
+          <li>Detailed logs for each Worker</li>
+        </ul>
+        <a href="/dashboard" class="inline-block px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-semibold">
+          Go to Dashboard →
+        </a>
+      </Card>
+
+      <Card className="p-6 mb-6 bg-blue-50 dark:bg-blue-900">
+        <h2 class="text-2xl font-bold mb-4">Advanced Configuration</h2>
+
+        <h3 class="text-xl font-semibold mb-3">Environment-Specific Consumers</h3>
+        <p class="mb-4">
+          You can configure different tail consumers for different environments:
+        </p>
+        <pre class="bg-gray-100 dark:bg-gray-900 p-4 rounded overflow-auto mb-4"><code>[env.production]
+[[env.production.tail_consumers]]
+service = "central-log-worker"
+
+[env.staging]
+[[env.staging.tail_consumers]]
+service = "central-log-worker-staging"</code></pre>
+
+        <h3 class="text-xl font-semibold mb-3">Multiple Consumers</h3>
+        <p class="mb-4">
+          You can send logs to multiple consumers:
+        </p>
+        <pre class="bg-gray-100 dark:bg-gray-900 p-4 rounded overflow-auto"><code>[[tail_consumers]]
+service = "central-log-worker"
+
+[[tail_consumers]]
+service = "backup-log-worker"</code></pre>
+      </Card>
+
+      <Card className="p-6 mb-6">
+        <h2 class="text-2xl font-bold mb-4">API Access</h2>
+        <p class="mb-4">
+          You can also access logs programmatically via the API:
+        </p>
+        <ul class="list-disc pl-6 space-y-2 mb-4">
+          <li><code>GET /api/logs</code> - Get filtered logs</li>
+          <li><code>GET /api/logs/workers</code> - List all workers</li>
+          <li><code>GET /api/logs/stats</code> - Get error statistics</li>
+          <li><code>GET /api/logs/:id</code> - Get specific log entry</li>
+        </ul>
+        <a href="/docs" class="text-blue-600 hover:underline">View full API documentation →</a>
+      </Card>
+
+      <Card className="p-6 bg-yellow-50 dark:bg-yellow-900">
+        <h2 class="text-2xl font-bold mb-4">Troubleshooting</h2>
+
+        <h3 class="text-xl font-semibold mb-3">Logs not appearing?</h3>
+        <ul class="list-disc pl-6 space-y-2 mb-4">
+          <li>Verify the tail consumer is correctly configured in your Worker's wrangler config</li>
+          <li>Ensure the service name matches this Worker's name exactly</li>
+          <li>Check that your Worker has been deployed after adding the tail consumer</li>
+          <li>Verify the D1 database is accessible and migrations are applied</li>
+        </ul>
+
+        <h3 class="text-xl font-semibold mb-3">Performance concerns?</h3>
+        <p class="mb-2">
+          The tail handler uses <code>ctx.waitUntil()</code> to batch insert logs without
+          blocking your Worker's response. This ensures minimal impact on your Worker's performance.
+        </p>
+      </Card>
+    </div>
+  </div>
+</BaseLayout>
