@@ -41,8 +41,8 @@ npm run deploy</code></pre>
       <Card className="p-6 mb-6">
         <h2 class="text-2xl font-bold mb-4">Step 2: Configure Tail Consumers</h2>
         <p class="mb-4">
-          For each Worker you want to monitor, add a <code>tail_consumers</code> configuration
-          to its <code>wrangler.toml</code> or <code>wrangler.jsonc</code> file:
+          For each Worker you want to monitor, add a tail_consumers configuration
+          to its wrangler.toml or wrangler.jsonc file:
         </p>
 
         <h3 class="text-xl font-semibold mb-3">Using wrangler.toml:</h3>
@@ -54,7 +54,7 @@ compatibility_date = "2024-04-01"
 service = "central-log-worker"  # Name of this logging Worker</code></pre>
 
         <h3 class="text-xl font-semibold mb-3">Using wrangler.jsonc:</h3>
-        <pre class="bg-gray-100 dark:bg-gray-900 p-4 rounded overflow-auto mb-4"><code>{
+        <pre class="bg-gray-100 dark:bg-gray-900 p-4 rounded overflow-auto mb-4"><code set:html={`{
   "name": "my-worker",
   "main": "src/index.ts",
   "compatibility_date": "2024-04-01",
@@ -63,7 +63,7 @@ service = "central-log-worker"  # Name of this logging Worker</code></pre>
       "service": "central-log-worker"
     }
   ]
-}</code></pre>
+}`} /></pre>
       </Card>
 
       <Card className="p-6 mb-6">
@@ -127,10 +127,10 @@ service = "backup-log-worker"</code></pre>
           You can also access logs programmatically via the API:
         </p>
         <ul class="list-disc pl-6 space-y-2 mb-4">
-          <li><code>GET /api/logs</code> - Get filtered logs</li>
-          <li><code>GET /api/logs/workers</code> - List all workers</li>
-          <li><code>GET /api/logs/stats</code> - Get error statistics</li>
-          <li><code>GET /api/logs/:id</code> - Get specific log entry</li>
+          <li>GET /api/logs - Get filtered logs</li>
+          <li>GET /api/logs/workers - List all workers</li>
+          <li>GET /api/logs/stats - Get error statistics</li>
+          <li>GET /api/logs/:id - Get specific log entry</li>
         </ul>
         <a href="/docs" class="text-blue-600 hover:underline">View full API documentation →</a>
       </Card>
@@ -148,7 +148,7 @@ service = "backup-log-worker"</code></pre>
 
         <h3 class="text-xl font-semibold mb-3">Performance concerns?</h3>
         <p class="mb-2">
-          The tail handler uses <code>ctx.waitUntil()</code> to batch insert logs without
+          The tail handler uses ctx.waitUntil() to batch insert logs without
           blocking your Worker's response. This ensures minimal impact on your Worker's performance.
         </p>
       </Card>
