@@ -241,4 +241,5 @@ logsRouter.get("/legacy/metrics", async (c) => {
   return c.json(results, 200);
 });
 
+
 export { logsRouter };

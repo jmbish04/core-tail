@@ -75,9 +75,9 @@ To send logs from your other Workers to this centralized logging system, add a t
   "compatibility_date": "2024-04-01",
   "tail_consumers": [
     {
-      "service": "central-log-worker"
-    }
-  ]
+      "service": "central-log-worker",
+    },
+  ],
 }
 ```
 

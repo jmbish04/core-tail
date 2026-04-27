@@ -1,23 +1,21 @@
-import * as React from 'react';
-import { Card } from '../ui/card';
-import { WorkerStats } from './WorkerStats';
-import { LogFilters } from './LogFilters';
-import { LogsTable } from './LogsTable';
+import * as React from "react";
+
+import { Card } from "../ui/card";
+import { LogFilters } from "./LogFilters";
+import { LogsTable } from "./LogsTable";
+import { WorkerStats } from "./WorkerStats";
 
 interface WorkerDetailProps {
   workerName: string;
 }
 
 export function WorkerDetail({ workerName }: WorkerDetailProps) {
-  const [outcomeFilter, setOutcomeFilter] = React.useState('');
+  const [outcomeFilter, setOutcomeFilter] = React.useState("");
 
   return (
     <div className="container mx-auto py-8 px-4">
       <div className="mb-6">
-        <a
-          href="/dashboard"
-          className="text-blue-600 hover:underline mb-2 inline-block"
-        >
+        <a href="/dashboard" className="text-blue-600 hover:underline mb-2 inline-block">
           ← Back to Dashboard
         </a>
         <h1 className="text-4xl font-bold">{workerName}</h1>

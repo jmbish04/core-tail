@@ -1,4 +1,4 @@
-import * as React from 'react';
+import * as React from "react";
 
 interface LogEntry {
   id: number;
@@ -17,11 +17,11 @@ export function RecentErrors() {
 
   async function loadErrors() {
     try {
-      const res = await fetch('/api/logs?outcome=exception&limit=10');
+      const res = await fetch("/api/logs?outcome=exception&limit=10");
       const data = await res.json();
       setErrors(data.logs);
     } catch (error) {
-      console.error('Error loading recent errors:', error);
+      console.error("Error loading recent errors:", error);
     } finally {
       setLoading(false);
     }
@@ -41,8 +41,8 @@ export function RecentErrors() {
         const timestamp = new Date(log.eventTimestamp).toLocaleString();
         const exceptions = log.exceptions || [];
         const firstException = exceptions[0] || {
-          name: 'Unknown',
-          message: 'No details available',
+          name: "Unknown",
+          message: "No details available",
         };
 
         return (

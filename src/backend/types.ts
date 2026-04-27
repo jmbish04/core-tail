@@ -6,7 +6,7 @@
 
 export interface TraceEvent {
   scriptName: string;
-  outcome: 'ok' | 'exception' | 'exceededCpu' | 'exceededMemory' | 'unknown' | 'canceled';
+  outcome: "ok" | "exception" | "exceededCpu" | "exceededMemory" | "unknown" | "canceled";
   eventTimestamp: number; // Unix ms
   event: {
     request?: {
@@ -24,7 +24,7 @@ export interface TraceEvent {
 }
 
 export interface TraceLog {
-  level: 'log' | 'debug' | 'info' | 'warn' | 'error';
+  level: "log" | "debug" | "info" | "warn" | "error";
   message: string;
   timestamp: number;
 }
