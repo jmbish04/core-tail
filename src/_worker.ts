@@ -3,8 +3,7 @@
  *
  * This file integrates the Hono API with Astro SSR and handles tail events.
  */
-
-import type { ExportedHandler } from '@cloudflare/workers-types';
+import type { ExportedHandler, ExecutionContext } from '@cloudflare/workers-types';
 import { app as honoApp } from './backend/api/index';
 import type { Bindings } from './backend/api/index';
 import type { TailEvent, TraceEvent } from './backend/types';
@@ -15,12 +14,14 @@ const handler: ExportedHandler<Bindings> = {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
 
-    // Handle API routes with Hono
-    if (url.pathname.startsWith('/api/') ||
-        url.pathname === '/openapi.json' ||
-        url.pathname === '/swagger' ||
-        url.pathname === '/scalar' ||
-        url.pathname === '/docs') {
+    // Handle API and Documentation routes
+    if (
+      url.pathname.startsWith('/api/') || 
+      url.pathname === '/openapi.json' || 
+      url.pathname === '/swagger' || 
+      url.pathname === '/scalar' || 
+      url.pathname === '/docs'
+    ) {
       return honoApp.fetch(request, env, ctx);
     }
 
