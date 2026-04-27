@@ -7,16 +7,21 @@ import { defineConfig } from "astro/config";
 const site = process.env.SITE ?? "http://localhost:4321";
 const base = process.env.BASE || "/";
 
-// https://astro.build/config
 export default defineConfig({
   site,
-  srcDir: "./src/frontend",
+  srcDir: "./src/frontend", // Ensure your Astro files are here
   base,
   output: "server",
   adapter: cloudflare({
     imageService: "cloudflare",
     platformProxy: {
       enabled: true,
+      // This allows local dev to "see" your KV namespace
+      bindings: {
+        SESSIONS: {
+          type: "kv",
+        },
+      },
     },
   }),
   integrations: [react()],
