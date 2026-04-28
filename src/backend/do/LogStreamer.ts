@@ -10,6 +10,10 @@ import { DurableObject } from "cloudflare:workers";
 export class LogStreamer extends DurableObject {
   constructor(state: DurableObjectState, env: any) {
     super(state, env);
+
+    // CRITICAL FIX #1: Auto-reply to application-level pings without waking the DO.
+    // Without this, frontend pings go unanswered during hibernation → frontend sees "disconnected".
+    this.ctx.setWebSocketAutoResponse(new WebSocketRequestResponsePair("ping", "pong"));
   }
 
   /**
@@ -18,23 +22,20 @@ export class LogStreamer extends DurableObject {
   async fetch(request: Request): Promise<Response> {
     const url = new URL(request.url);
 
-    // WebSocket Upgrade endpoint
-    if (url.pathname === "/ws") {
-      const upgradeHeader = request.headers.get("Upgrade");
-      if (upgradeHeader !== "websocket") {
-        return new Response("Expected Upgrade: websocket", { status: 426 });
-      }
-
-      const pair = new WebSocketPair();
-      const [client, server] = Object.values(pair);
-
-      // Use Hibernation API for efficient WebSocket management
-      this.ctx.acceptWebSocket(server);
-
-      return new Response(null, {
-        status: 101,
-        webSocket: client,
-      });
+    // Health check endpoint
+    if (url.pathname === "/health") {
+      const sockets = this.ctx.getWebSockets();
+      return new Response(
+        JSON.stringify({
+          status: "healthy",
+          activeConnections: sockets.length,
+          timestamp: new Date().toISOString(),
+        }),
+        {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        },
+      );
     }
 
     // Ingest logs from the Tail Handler
@@ -42,6 +43,28 @@ export class LogStreamer extends DurableObject {
       const logData = await request.text();
       this.broadcast(logData);
       return new Response("OK");
+    }
+
+    // WebSocket Upgrade endpoint - accept any path with Upgrade: websocket header
+    const upgradeHeader = request.headers.get("Upgrade");
+    if (upgradeHeader?.toLowerCase() === "websocket") {
+      const pair = new WebSocketPair();
+      const [client, server] = Object.values(pair);
+
+      // Use Hibernation API for efficient WebSocket management
+      this.ctx.acceptWebSocket(server);
+
+      // CRITICAL FIX #2: Persist per-connection state so it survives hibernation.
+      // When the DO wakes up, the constructor re-runs and you can restore this via deserializeAttachment.
+      server.serializeAttachment({
+        connectedAt: Date.now(),
+        filters: [] as string[],
+      });
+
+      return new Response(null, {
+        status: 101,
+        webSocket: client,
+      });
     }
 
     return new Response("Not Found", { status: 404 });
@@ -53,11 +76,13 @@ export class LogStreamer extends DurableObject {
   broadcast(message: string) {
     const sockets = this.ctx.getWebSockets();
     for (const ws of sockets) {
-      try {
-        ws.send(message);
-      } catch (e) {
-        // Connection might be closed - Hibernation API will handle cleanup
-        console.error("Error broadcasting to WebSocket:", e);
+      // FIX #3: Only send to OPEN connections to avoid errors on CLOSING/CLOSED sockets
+      if (ws.readyState === WebSocket.OPEN) {
+        try {
+          ws.send(message);
+        } catch (e) {
+          console.error("Error broadcasting to WebSocket:", e);
+        }
       }
     }
   }
@@ -70,12 +95,15 @@ export class LogStreamer extends DurableObject {
       const data = typeof message === "string" ? JSON.parse(message) : null;
 
       if (data && data.type === "subscribe") {
-        // Send acknowledgment for subscription filter updates
+        // FIX #2 (continued): Update attachment when filters change so they survive hibernation
+        const attachment = ws.deserializeAttachment() || {};
+        ws.serializeAttachment({ ...attachment, filters: data.filters });
+
         ws.send(
           JSON.stringify({
             type: "subscription_updated",
             filters: data.filters,
-          })
+          }),
         );
       }
     } catch (e) {
@@ -86,7 +114,7 @@ export class LogStreamer extends DurableObject {
   /**
    * Handle WebSocket close events
    */
-  async webSocketClose(ws: WebSocket, code: number, reason: string, wasClean: boolean) {
+  async webSocketClose(ws: WebSocket, code: number, reason: string, _wasClean: boolean) {
     // Hibernation API handles cleanup automatically
     ws.close(code, reason);
   }
@@ -96,5 +124,7 @@ export class LogStreamer extends DurableObject {
    */
   async webSocketError(ws: WebSocket, error: unknown) {
     console.error("WebSocket error:", error);
+    // FIX #4: Close the socket on error to ensure cleanup
+    ws.close(1011, "WebSocket error");
   }
 }

@@ -2,7 +2,16 @@
 
 **Objective:** Build a centralized Tail Worker aggregator, a Shadcn-powered admin dashboard, and an error-analyzing Agent on the Cloudflare ecosystem.
 
-**Steps:**
+## Observability and Connectivity Workflow
+
+1. **Environment Audit**: Run `pnpm run build` and check the `dist` directory to confirm if `_worker.js` is a file or directory.
+2. **KV Configuration**: Update `wrangler.jsonc` with the `RAW_LOGS` KV namespace binding and correct the `main` entry point path.
+3. **Log Ingestion Update**: Modify `src/backend/services/tailHandler.ts` to implement the dual-write pattern (KV raw store + D1 indexed store) wrapped in `ctx.waitUntil`.
+4. **Health Route Refactor**: Update `src/backend/api/routes/health.ts` to include parity checks and DO status verification.
+5. **DO Export Validation**: Run `node build-worker.js` and verify the output bundle contains `export { LogStreamer }`.
+6. **Deployment**: Run `pnpm run deploy` without log redirection to verify a clean production push.
+
+## General Implementation Steps
 
 1. **Analyze Requirements**: Review the requested feature and identify necessary schema, API, or UI changes.
 2. **Schema Modifications**: If `src/backend/db/schema.ts` is modified, immediately run `npm run db:generate` locally to generate migration files.

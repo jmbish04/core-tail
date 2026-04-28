@@ -3,6 +3,7 @@
  */
 
 import { Hono } from "hono";
+
 import type { Bindings } from "../index";
 
 const streamRouter = new Hono<{ Bindings: Bindings }>();
@@ -14,7 +15,7 @@ const streamRouter = new Hono<{ Bindings: Bindings }>();
  */
 streamRouter.get("/logs", async (c) => {
   const upgradeHeader = c.req.header("Upgrade");
-  if (!upgradeHeader || upgradeHeader !== "websocket") {
+  if (!upgradeHeader || upgradeHeader.toLowerCase() !== "websocket") {
     return c.text("Expected Upgrade: websocket", 426);
   }
 
@@ -27,8 +28,9 @@ streamRouter.get("/logs", async (c) => {
     const doId = c.env.LOG_STREAMER.idFromName("global-streamer");
     const streamer = c.env.LOG_STREAMER.get(doId);
 
-    // Forward the WebSocket upgrade request to the Durable Object
-    return streamer.fetch("http://do/ws", c.req.raw);
+    // Forward the original WebSocket upgrade request directly to the Durable Object
+    // This ensures all headers and the upgrade protocol are properly preserved
+    return streamer.fetch(c.req.raw);
   } catch (error) {
     console.error("Error connecting to LogStreamer DO:", error);
     return c.text("Failed to establish WebSocket connection", 500);

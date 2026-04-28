@@ -1,5 +1,3 @@
-import type { Connection, ConnectionContext, WSMessage } from "agents";
-
 import { Ai } from "@cloudflare/workers-types";
 import { Agent } from "agents";
 

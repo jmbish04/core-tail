@@ -33,7 +33,7 @@
   "durable_objects": {
     "bindings": [
       { "name": "LOG_ANALYZER_AGENT", "class_name": "LogAnalyzerAgent" },
-      { "name": "LOG_STREAMER", "class_name": "LogStreamer" }
+      { "name": "LOG_STREAMER", "class_name": "LogStreamer" },
     ],
   },
   "migrations": [
@@ -50,6 +50,10 @@
     {
       "binding": "SESSIONS",
       "id": "498412f3e70e4669b6e29e5203a29dac",
+    },
+    {
+      "binding": "RAW_LOGS",
+      "id": "85e56b49cfff40ef854447c4b2fadc84",
     },
   ],
   "d1_databases": [

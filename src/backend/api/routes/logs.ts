@@ -2,16 +2,18 @@
  * @fileoverview API routes for worker logs with OpenAPI integration
  */
 
-import { OpenAPIHono } from '@hono/zod-openapi';
-import { drizzle } from 'drizzle-orm/d1';
-import { workerLogs, logs } from '../../db/schema';
-import { desc, eq, sql, and, gte } from 'drizzle-orm';
-import type { Bindings } from '../index';
-import { getLogsRoute, getWorkersListRoute, getLogsStatsRoute, getLogByIdRoute } from './openapi';
+import { OpenAPIHono } from "@hono/zod-openapi";
 import { zValidator } from "@hono/zod-validator";
+import { desc, eq, sql, and, gte } from "drizzle-orm";
+import { drizzle } from "drizzle-orm/d1";
 import { z } from "zod";
 
-const logsRouter = new OpenAPIHono<{ Bindings: Bindings }>();
+
+
+import { workerLogs, logs } from "../../db/schema";
+import { getLogsRoute, getWorkersListRoute, getLogsStatsRoute, getLogByIdRoute } from "./openapi";
+
+const logsRouter = new OpenAPIHono<{ Bindings: Env }>();
 
 /**
  * Safely parse JSON with fallback to null on error
@@ -21,7 +23,7 @@ function safeJsonParse(jsonString: string | null): any {
   try {
     return JSON.parse(jsonString);
   } catch (error) {
-    console.error('Failed to parse JSON:', error);
+    console.error("Failed to parse JSON:", error);
     return null;
   }
 }
@@ -31,7 +33,7 @@ function safeJsonParse(jsonString: string | null): any {
  * Get filtered worker logs
  */
 logsRouter.openapi(getLogsRoute, async (c) => {
-  const { workerName, outcome, limit, offset, since } = c.req.valid('query');
+  const { workerName, outcome, limit, offset, since } = c.req.valid("query");
   const db = drizzle(c.env.DB);
 
   const conditions = [];
@@ -53,7 +55,7 @@ logsRouter.openapi(getLogsRoute, async (c) => {
 
   // Get total count for pagination
   const [countResult] = await db
-    .select({ count: sql<number>`count(*)`.as('count') })
+    .select({ count: sql<number>`count(*)`.as("count") })
     .from(workerLogs)
     .where(whereClause);
 
@@ -69,22 +71,31 @@ logsRouter.openapi(getLogsRoute, async (c) => {
     .offset(offset);
 
   // Parse JSON fields with error handling
-  const parsedLogs = workerLogsResult.map(log => ({
+  const parsedLogs = workerLogsResult.map((log) => ({
     ...log,
-    outcome: log.outcome as "unknown" | "ok" | "canceled" | "exception" | "exceededCpu" | "exceededMemory",
+    outcome: log.outcome as
+      | "unknown"
+      | "ok"
+      | "canceled"
+      | "exception"
+      | "exceededCpu"
+      | "exceededMemory",
     eventTimestamp: log.eventTimestamp.toISOString(),
     logs: safeJsonParse(log.logs),
     exceptions: safeJsonParse(log.exceptions),
   }));
 
-  return c.json({
-    logs: parsedLogs,
-    pagination: {
-      limit,
-      offset,
-      total: totalCount,
+  return c.json(
+    {
+      logs: parsedLogs,
+      pagination: {
+        limit,
+        offset,
+        total: totalCount,
+      },
     },
-  }, 200);
+    200,
+  );
 });
 
 /**
@@ -99,9 +110,12 @@ logsRouter.openapi(getWorkersListRoute, async (c) => {
     .from(workerLogs)
     .orderBy(workerLogs.workerName);
 
-  return c.json({
-    workers: workers.map(w => w.workerName),
-  }, 200);
+  return c.json(
+    {
+      workers: workers.map((w) => w.workerName),
+    },
+    200,
+  );
 });
 
 /**
@@ -109,7 +123,7 @@ logsRouter.openapi(getWorkersListRoute, async (c) => {
  * Get error rate statistics
  */
 logsRouter.openapi(getLogsStatsRoute, async (c) => {
-  const { workerName } = c.req.valid('query');
+  const { workerName } = c.req.valid("query");
   const db = drizzle(c.env.DB);
 
   // Build where clause for optional workerName filter
@@ -119,7 +133,7 @@ logsRouter.openapi(getLogsStatsRoute, async (c) => {
   const outcomeCounts = await db
     .select({
       outcome: workerLogs.outcome,
-      count: sql<number>`count(*)`.as('count'),
+      count: sql<number>`count(*)`.as("count"),
     })
     .from(workerLogs)
     .where(whereClause)
@@ -130,7 +144,7 @@ logsRouter.openapi(getLogsStatsRoute, async (c) => {
     .select({
       workerName: workerLogs.workerName,
       outcome: workerLogs.outcome,
-      count: sql<number>`count(*)`.as('count'),
+      count: sql<number>`count(*)`.as("count"),
     })
     .from(workerLogs)
     .where(whereClause)
@@ -139,30 +153,36 @@ logsRouter.openapi(getLogsStatsRoute, async (c) => {
   // Calculate error rates
   const totalLogs = outcomeCounts.reduce((sum, item) => sum + Number(item.count), 0);
   const errorCount = outcomeCounts
-    .filter(item => item.outcome !== 'ok')
+    .filter((item) => item.outcome !== "ok")
     .reduce((sum, item) => sum + Number(item.count), 0);
 
   const errorRate = totalLogs > 0 ? (errorCount / totalLogs) * 100 : 0;
 
-  return c.json({
-    overview: {
-      totalLogs,
-      errorCount,
-      errorRate: parseFloat(errorRate.toFixed(2)),
+  return c.json(
+    {
+      overview: {
+        totalLogs,
+        errorCount,
+        errorRate: parseFloat(errorRate.toFixed(2)),
+      },
+      byOutcome: outcomeCounts.map((item) => ({
+        outcome: item.outcome,
+        count: Number(item.count),
+      })),
+      byWorker: workerStats.reduce(
+        (acc, item) => {
+          const workerName = item.workerName;
+          if (!acc[workerName]) {
+            acc[workerName] = {};
+          }
+          acc[workerName][item.outcome] = Number(item.count);
+          return acc;
+        },
+        {} as Record<string, Record<string, number>>,
+      ),
     },
-    byOutcome: outcomeCounts.map(item => ({
-      outcome: item.outcome,
-      count: Number(item.count),
-    })),
-    byWorker: workerStats.reduce((acc, item) => {
-      const workerName = item.workerName;
-      if (!acc[workerName]) {
-        acc[workerName] = {};
-      }
-      acc[workerName][item.outcome] = Number(item.count);
-      return acc;
-    }, {} as Record<string, Record<string, number>>),
-  }, 200);
+    200,
+  );
 });
 
 /**
@@ -170,22 +190,24 @@ logsRouter.openapi(getLogsStatsRoute, async (c) => {
  * Get a specific log entry by ID
  */
 logsRouter.openapi(getLogByIdRoute, async (c) => {
-  const { id } = c.req.valid('param');
+  const { id } = c.req.valid("param");
   const db = drizzle(c.env.DB);
 
-  const log = await db
-    .select()
-    .from(workerLogs)
-    .where(eq(workerLogs.id, id))
-    .limit(1);
+  const log = await db.select().from(workerLogs).where(eq(workerLogs.id, id)).limit(1);
 
   if (log.length === 0) {
-    return c.json({ error: 'Log not found' }, 404);
+    return c.json({ error: "Log not found" }, 404);
   }
 
   const parsedLog = {
     ...log[0],
-    outcome: log[0].outcome as "unknown" | "ok" | "canceled" | "exception" | "exceededCpu" | "exceededMemory",
+    outcome: log[0].outcome as
+      | "unknown"
+      | "ok"
+      | "canceled"
+      | "exception"
+      | "exceededCpu"
+      | "exceededMemory",
     eventTimestamp: log[0].eventTimestamp.toISOString(),
     logs: safeJsonParse(log[0].logs),
     exceptions: safeJsonParse(log[0].exceptions),
@@ -212,7 +234,7 @@ logsRouter.get(
 
     let query: any = db.select().from(logs).orderBy(desc(logs.timestamp));
 
-    if (workerName && workerName !== 'all') {
+    if (workerName && workerName !== "all") {
       query = db
         .select()
         .from(logs)
@@ -258,14 +280,24 @@ logsRouter.get("/worker/:workerName/errors", async (c) => {
     .limit(1000); // Get last 1000 errors for analysis
 
   // Group errors by message to find unique errors
-  const errorGroups = new Map<string, { message: string; count: number; firstSeen: Date; lastSeen: Date; exampleId: number; metadata: any }>();
+  const errorGroups = new Map<
+    string,
+    {
+      message: string;
+      count: number;
+      firstSeen: Date;
+      lastSeen: Date;
+      exampleId: number;
+      metadata: any;
+    }
+  >();
 
   for (const log of errorLogs) {
     // Normalize error message (remove dynamic parts like timestamps, IDs, etc.)
     const normalizedMessage = log.message
-      .replace(/\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/g, '[TIMESTAMP]')
-      .replace(/\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b/gi, '[UUID]')
-      .replace(/\d+/g, '[NUMBER]');
+      .replace(/\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z?/g, "[TIMESTAMP]")
+      .replace(/\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b/gi, "[UUID]")
+      .replace(/\d+/g, "[NUMBER]");
 
     const existing = errorGroups.get(normalizedMessage);
     if (existing) {
@@ -286,7 +318,7 @@ logsRouter.get("/worker/:workerName/errors", async (c) => {
   // Convert to array and sort by count
   const uniqueErrors = Array.from(errorGroups.values())
     .sort((a, b) => b.count - a.count)
-    .map(error => ({
+    .map((error) => ({
       ...error,
       firstSeen: error.firstSeen.toISOString(),
       lastSeen: error.lastSeen.toISOString(),
@@ -294,5 +326,66 @@ logsRouter.get("/worker/:workerName/errors", async (c) => {
 
   return c.json({ errors: uniqueErrors }, 200);
 });
+
+/**
+ * GET /api/logs/sync
+ * Synchronous fallback API for real-time log streaming
+ * Returns the latest 100 log entries from D1 database
+ * Used when WebSocket connection fails or drops
+ */
+logsRouter.get(
+  "/sync",
+  zValidator(
+    "query",
+    z.object({
+      limit: z.string().optional().default("100"),
+      since: z.string().optional(), // ISO timestamp for incremental sync
+    }),
+  ),
+  async (c) => {
+    const { limit, since } = c.req.valid("query");
+    const db = drizzle(c.env.DB);
+
+    const conditions = [];
+
+    // If 'since' is provided, only return logs after that timestamp
+    if (since) {
+      const sinceDate = new Date(since);
+      conditions.push(gte(workerLogs.eventTimestamp, sinceDate));
+    }
+
+    const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
+
+    // Get latest logs from worker_logs table
+    const logsResult = await db
+      .select()
+      .from(workerLogs)
+      .where(whereClause)
+      .orderBy(desc(workerLogs.eventTimestamp))
+      .limit(parseInt(limit, 10));
+
+    // Parse JSON fields with error handling
+    const parsedLogs = logsResult.map((log) => ({
+      id: log.id,
+      workerName: log.workerName,
+      eventTimestamp: log.eventTimestamp.toISOString(),
+      outcome: log.outcome,
+      logs: safeJsonParse(log.logs),
+      exceptions: safeJsonParse(log.exceptions),
+      statusCode: log.statusCode,
+      requestUrl: log.requestUrl,
+      requestMethod: log.requestMethod,
+    }));
+
+    return c.json(
+      {
+        logs: parsedLogs,
+        timestamp: new Date().toISOString(),
+        count: parsedLogs.length,
+      },
+      200,
+    );
+  },
+);
 
 export { logsRouter };

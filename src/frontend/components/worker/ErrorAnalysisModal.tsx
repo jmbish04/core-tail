@@ -1,8 +1,9 @@
-import * as React from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
-import { Button } from '../ui/button';
-import { Badge } from '../ui/badge';
-import { CopyIcon, LoaderIcon, SparklesIcon, XIcon } from 'lucide-react';
+import { CopyIcon, LoaderIcon, SparklesIcon, XIcon } from "lucide-react";
+import * as React from "react";
+
+import { Badge } from "../ui/badge";
+import { Button } from "../ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 
 interface Props {
   workerName: string;
@@ -16,8 +17,8 @@ interface Props {
 }
 
 export function ErrorAnalysisModal({ workerName, error, onClose }: Props) {
-  const [status, setStatus] = React.useState<string>('idle');
-  const [analysis, setAnalysis] = React.useState<string>('');
+  const [status, setStatus] = React.useState<string>("idle");
+  const [analysis, setAnalysis] = React.useState<string>("");
   const [loading, setLoading] = React.useState(false);
 
   React.useEffect(() => {
@@ -27,13 +28,13 @@ export function ErrorAnalysisModal({ workerName, error, onClose }: Props) {
 
   const analyzeError = async () => {
     setLoading(true);
-    setStatus('Initializing AI analysis...');
+    setStatus("Initializing AI analysis...");
 
     try {
-      const response = await fetch('/api/analysis/analyze', {
-        method: 'POST',
+      const response = await fetch("/api/analysis/analyze", {
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({
           workerName,
@@ -44,16 +45,16 @@ export function ErrorAnalysisModal({ workerName, error, onClose }: Props) {
       });
 
       if (!response.ok) {
-        throw new Error('Analysis failed');
+        throw new Error("Analysis failed");
       }
 
       const result = await response.json();
-      setAnalysis(result.analysis || 'No analysis available');
-      setStatus('Analysis complete');
+      setAnalysis(result.analysis || "No analysis available");
+      setStatus("Analysis complete");
     } catch (err) {
-      console.error('Error analyzing:', err);
-      setAnalysis('Failed to analyze error. Please try again.');
-      setStatus('Error');
+      console.error("Error analyzing:", err);
+      setAnalysis("Failed to analyze error. Please try again.");
+      setStatus("Error");
     } finally {
       setLoading(false);
     }
@@ -61,7 +62,7 @@ export function ErrorAnalysisModal({ workerName, error, onClose }: Props) {
 
   const copyAnalysisToClipboard = () => {
     navigator.clipboard.writeText(analysis).then(() => {
-      alert('Analysis copied to clipboard!');
+      alert("Analysis copied to clipboard!");
     });
   };
 
@@ -88,7 +89,9 @@ export function ErrorAnalysisModal({ workerName, error, onClose }: Props) {
             <div className="text-sm font-semibold mb-2">Error Message:</div>
             <div className="font-mono text-sm">{error.message}</div>
             <div className="flex items-center gap-4 mt-2 text-xs text-gray-500">
-              <span>Occurrences: <Badge variant="secondary">{error.count}</Badge></span>
+              <span>
+                Occurrences: <Badge variant="secondary">{error.count}</Badge>
+              </span>
             </div>
           </div>
 

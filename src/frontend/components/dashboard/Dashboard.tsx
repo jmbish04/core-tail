@@ -1,9 +1,10 @@
-import * as React from 'react';
-import { Card } from '../ui/card';
-import { StatsCard } from './StatsCard';
-import { WorkersList } from './WorkersList';
-import { RecentErrors } from './RecentErrors';
-import { StatsCharts } from './StatsCharts';
+import * as React from "react";
+
+import { Card } from "../ui/card";
+import { RecentErrors } from "./RecentErrors";
+import { StatsCard } from "./StatsCard";
+import { StatsCharts } from "./StatsCharts";
+import { WorkersList } from "./WorkersList";
 
 interface DashboardStats {
   overview: {
@@ -25,11 +26,11 @@ export function Dashboard() {
 
   async function loadStats() {
     try {
-      const res = await fetch('/api/logs/stats');
+      const res = await fetch("/api/logs/stats");
       const data = await res.json();
       setStats(data);
     } catch (error) {
-      console.error('Error loading stats:', error);
+      console.error("Error loading stats:", error);
     } finally {
       setLoading(false);
     }
@@ -41,22 +42,15 @@ export function Dashboard() {
 
       {/* Global Stats */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-        <StatsCard
-          title="Total Logs"
-          value={loading ? '-' : stats?.overview.totalLogs || 0}
-        />
+        <StatsCard title="Total Logs" value={loading ? "-" : stats?.overview.totalLogs || 0} />
         <StatsCard
           title="Error Count"
-          value={loading ? '-' : stats?.overview.errorCount || 0}
+          value={loading ? "-" : stats?.overview.errorCount || 0}
           className="text-red-600"
         />
         <StatsCard
           title="Error Rate"
-          value={
-            loading
-              ? '-%'
-              : `${stats?.overview.errorRate.toFixed(2) || 0}%`
-          }
+          value={loading ? "-%" : `${stats?.overview.errorRate.toFixed(2) || 0}%`}
           className="text-red-600"
         />
       </div>

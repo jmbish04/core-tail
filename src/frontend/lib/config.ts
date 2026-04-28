@@ -31,6 +31,7 @@ export const siteConfig: SiteConfig = {
     { href: "/", label: "Dashboard" },
     { href: "/logs", label: "Logs" },
     { href: "/realtime", label: "Real-time" },
+    { href: "/core-tail-logs", label: "Core-Tail Logs" },
     { href: "https://github.com/jmbish04/core-tail", label: "GitHub", external: true },
   ],
 };
