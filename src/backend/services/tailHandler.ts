@@ -14,6 +14,7 @@ export async function processTailEvents(events: any[], env: any, ctx: ExecutionC
   const processingPromise = (async () => {
     const logsToInsert: any[] = [];
     const workerLogsEntries: any[] = [];
+    const kvPromises: Promise<void>[] = [];
 
     // Log internal observability event
     console.info(`[Tail] Processing ${events.length} tail events`);
@@ -26,11 +27,25 @@ export async function processTailEvents(events: any[], env: any, ctx: ExecutionC
     for (const event of events) {
       const workerName = event.scriptName || "unknown";
       const timestamp = new Date(event.eventTimestamp);
+      const eventId = `${timestamp.getTime()}-${Math.random().toString(36).substring(7)}`;
 
       // Log per-event observability
       console.info(
         `[Tail] Processing ${event.logs?.length || 0} logs from ${workerName}, outcome: ${event.outcome}`
       );
+
+      // RAW LOG PERSISTENCE: Store raw event in KV before processing
+      if (env.RAW_LOGS) {
+        const rawKey = `raw:${timestamp.getTime()}:${workerName}:${eventId}`;
+        const rawValue = JSON.stringify(event);
+        kvPromises.push(
+          env.RAW_LOGS.put(rawKey, rawValue, {
+            expirationTtl: 86400 * 7, // 7 days retention
+          }).catch((error: Error) => {
+            console.error(`Error storing raw log to KV: ${error.message}`);
+          })
+        );
+      }
 
       // Keep upstream workerLogs logic
       workerLogsEntries.push({
@@ -99,6 +114,9 @@ export async function processTailEvents(events: any[], env: any, ctx: ExecutionC
       }
     }
 
+    // Wait for all KV writes to complete
+    await Promise.all(kvPromises);
+
     // Batch insert to D1
     try {
       if (workerLogsEntries.length > 0) {
@@ -113,7 +131,7 @@ export async function processTailEvents(events: any[], env: any, ctx: ExecutionC
       // Log successful processing
       await db.insert(metaInternalLogs).values({
         event: "BATCH_COMPLETE",
-        details: `Successfully inserted ${workerLogsEntries.length} worker_logs and ${logsToInsert.length} logs`,
+        details: `Successfully inserted ${workerLogsEntries.length} worker_logs and ${logsToInsert.length} logs. KV writes: ${kvPromises.length}`,
         timestamp: new Date(),
       });
     } catch (error) {

@@ -18,6 +18,22 @@ export class LogStreamer extends DurableObject {
   async fetch(request: Request): Promise<Response> {
     const url = new URL(request.url);
 
+    // Health check endpoint
+    if (url.pathname === "/health") {
+      const sockets = this.ctx.getWebSockets();
+      return new Response(
+        JSON.stringify({
+          status: "healthy",
+          activeConnections: sockets.length,
+          timestamp: new Date().toISOString(),
+        }),
+        {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        }
+      );
+    }
+
     // WebSocket Upgrade endpoint
     if (url.pathname === "/ws") {
       const upgradeHeader = request.headers.get("Upgrade");

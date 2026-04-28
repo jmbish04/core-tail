@@ -11,3 +11,17 @@ INSTRUCTION: Review the existing `.agent/rules/` directory first, and then merge
 7. **BUILD INTEGRITY**: Always include a `prebuild` script that runs `rm -rf dist .astro node_modules/.vite` to prevent asset "ghosting" from template deployments. This ensures no stale template artifacts persist between builds.
 8. **IDENTITY ISOLATION**: When a project is cloned from a template, immediately verify that `package.json` metadata (name, description, author, repository URL), `wrangler.jsonc` names, and `astro.config.ts` site URLs are updated to reflect the new project identity, not the template's identity.
 9. **ASSET MAPPING**: Ensure the `ASSETS` binding in `_worker.ts` is explicitly tested against the current `dist` directory contents after every major build change. The `env.ASSETS.fetch(request)` call must serve content from the newly built `dist` directory, not cached template assets.
+
+## Enhanced Observability Rules
+
+10. **Async Safety**: Every asynchronous operation within a `tail()` handler (D1 inserts, KV puts, DO fetches) **MUST** be wrapped in `ctx.waitUntil(promise)` to prevent the Worker isolate from being evicted before completion.
+11. **Build Integrity**: When using Astro with the Cloudflare adapter, always use a post-build script (`build-worker.js`) to re-inject Durable Object exports that may be stripped by the Astro bundling process.
+12. **Log Redundancy**: Implement a "Raw-to-Indexed" buffer using KV for incoming tail events to provide a recovery path and health diagnostic source if D1 indexing fails.
+13. **Transparency**: Never mask deployment output in CI/CD environments; ensure `npx wrangler deploy` output is streamed directly to the terminal.
+14. **Durable Object Exports**: Always ensure that Durable Object classes are properly exported in the final worker bundle. The build-worker.js script should detect and patch missing exports automatically.
+15. **Health Monitoring**: Implement comprehensive health checks that verify:
+    - Database connectivity and response times
+    - Log parity between KV raw storage and D1 indexed storage
+    - Durable Object reachability and WebSocket connectivity
+    - Overall system status aggregation
+16. **Error Handling**: All async operations should include proper error handling and logging. Errors should not cause the entire batch to fail; instead, log the error and continue processing remaining events.

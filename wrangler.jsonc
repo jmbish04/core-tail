@@ -51,6 +51,11 @@
       "binding": "SESSIONS",
       "id": "498412f3e70e4669b6e29e5203a29dac",
     },
+    {
+      "binding": "RAW_LOGS",
+      "id": "preview_id",
+      "preview_id": "preview_id",
+    },
   ],
   "d1_databases": [
     {
