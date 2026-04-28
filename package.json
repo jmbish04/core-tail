@@ -23,7 +23,7 @@
     "db:generate": "drizzle-kit generate",
     "migrate:local": "npx wrangler d1 migrations apply DB --local",
     "migrate:remote": "npx wrangler d1 migrations apply DB --remote",
-    "deploy": "rm -f wrangler_deploy.log && pnpm run build && node build-worker.js && cp .assetsignore dist/.assetsignore && pnpm run migrate:remote && npx wrangler deploy > wrangler_deploy.log 2>&1",
+    "deploy": "pnpm run build && node build-worker.js && cp .assetsignore dist/.assetsignore && pnpm run migrate:remote && npx wrangler deploy",
     "cf-typegen": "wrangler types"
   },
   "dependencies": {
