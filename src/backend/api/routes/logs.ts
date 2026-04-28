@@ -295,7 +295,7 @@ logsRouter.get("/worker/:workerName/errors", async (c) => {
   for (const log of errorLogs) {
     // Normalize error message (remove dynamic parts like timestamps, IDs, etc.)
     const normalizedMessage = log.message
-      .replace(/\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/g, "[TIMESTAMP]")
+      .replace(/\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d+)?Z?/g, "[TIMESTAMP]")
       .replace(/\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b/gi, "[UUID]")
       .replace(/\d+/g, "[NUMBER]");
 
