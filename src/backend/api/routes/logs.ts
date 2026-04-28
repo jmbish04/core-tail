@@ -8,12 +8,11 @@ import { desc, eq, sql, and, gte } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/d1";
 import { z } from "zod";
 
-import type { Bindings } from "../index";
 
 import { workerLogs, logs } from "../../db/schema";
 import { getLogsRoute, getWorkersListRoute, getLogsStatsRoute, getLogByIdRoute } from "./openapi";
 
-const logsRouter = new OpenAPIHono<{ Bindings: Bindings }>();
+const logsRouter = new OpenAPIHono<{ Bindings: Env }>();
 
 /**
  * Safely parse JSON with fallback to null on error
@@ -97,6 +96,46 @@ logsRouter.openapi(getLogsRoute, async (c) => {
     200,
   );
 });
+
+/**
+ * GET /api/logs/sync
+ * Synchronous fallback API for real-time polling
+ */
+logsRouter.get(
+  "/sync",
+  zValidator(
+    "query",
+    z.object({
+      workerName: z.string().optional(),
+      level: z.string().optional(),
+      limit: z.string().optional().default("100"),
+    }),
+  ),
+  async (c) => {
+    const db = drizzle(c.env.DB);
+    const { workerName, level, limit } = c.req.valid("query");
+
+    const conditions = [];
+    if (workerName && workerName !== "all") {
+      conditions.push(eq(logs.workerName, workerName));
+    }
+    if (level && level !== "all") {
+      conditions.push(eq(logs.level, level));
+    }
+
+    const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
+
+    const results = await db
+      .select()
+      .from(logs)
+      .where(whereClause)
+      .orderBy(desc(logs.timestamp))
+      .limit(parseInt(limit, 10))
+      .execute();
+
+    return c.json({ logs: results }, 200);
+  },
+);
 
 /**
  * GET /api/logs/workers
@@ -326,66 +365,5 @@ logsRouter.get("/worker/:workerName/errors", async (c) => {
 
   return c.json({ errors: uniqueErrors }, 200);
 });
-
-/**
- * GET /api/logs/sync
- * Synchronous fallback API for real-time log streaming
- * Returns the latest 100 log entries from D1 database
- * Used when WebSocket connection fails or drops
- */
-logsRouter.get(
-  "/sync",
-  zValidator(
-    "query",
-    z.object({
-      limit: z.string().optional().default("100"),
-      since: z.string().optional(), // ISO timestamp for incremental sync
-    }),
-  ),
-  async (c) => {
-    const { limit, since } = c.req.valid("query");
-    const db = drizzle(c.env.DB);
-
-    const conditions = [];
-
-    // If 'since' is provided, only return logs after that timestamp
-    if (since) {
-      const sinceDate = new Date(since);
-      conditions.push(gte(workerLogs.eventTimestamp, sinceDate));
-    }
-
-    const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
-
-    // Get latest logs from worker_logs table
-    const logsResult = await db
-      .select()
-      .from(workerLogs)
-      .where(whereClause)
-      .orderBy(desc(workerLogs.eventTimestamp))
-      .limit(parseInt(limit, 10));
-
-    // Parse JSON fields with error handling
-    const parsedLogs = logsResult.map((log) => ({
-      id: log.id,
-      workerName: log.workerName,
-      eventTimestamp: log.eventTimestamp.toISOString(),
-      outcome: log.outcome,
-      logs: safeJsonParse(log.logs),
-      exceptions: safeJsonParse(log.exceptions),
-      statusCode: log.statusCode,
-      requestUrl: log.requestUrl,
-      requestMethod: log.requestMethod,
-    }));
-
-    return c.json(
-      {
-        logs: parsedLogs,
-        timestamp: new Date().toISOString(),
-        count: parsedLogs.length,
-      },
-      200,
-    );
-  },
-);
 
 export { logsRouter };
