@@ -1,4 +1,4 @@
-import { CopyIcon, RefreshCwIcon } from "lucide-react";
+import { CopyIcon, RefreshCwIcon, WifiIcon, WifiOffIcon } from "lucide-react";
 import * as React from "react";
 
 import { Badge } from "./ui/badge";
@@ -6,6 +6,7 @@ import { Button } from "./ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Input } from "./ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
+import { useToast } from "./ui/toast";
 
 interface LogEntry {
   id: number;
@@ -26,8 +27,11 @@ export function RealtimeLogs() {
   const [selectedLevel, setSelectedLevel] = React.useState<string>("all");
   const [keyword, setKeyword] = React.useState<string>("");
   const [isConnected, setIsConnected] = React.useState(false);
+  const [connectionError, setConnectionError] = React.useState<string>("");
+  const [isReconnecting, setIsReconnecting] = React.useState(false);
   const [ws, setWs] = React.useState<WebSocket | null>(null);
   const logsEndRef = React.useRef<HTMLDivElement>(null);
+  const { addToast } = useToast();
 
   // Load workers list
   React.useEffect(() => {
@@ -61,7 +65,12 @@ export function RealtimeLogs() {
   }, [selectedWorker, selectedLevel, keyword]);
 
   // WebSocket connection
-  React.useEffect(() => {
+  const connectWebSocket = React.useCallback(() => {
+    // Close existing connection
+    if (ws) {
+      ws.close();
+    }
+
     const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
     const params = new URLSearchParams();
     if (selectedWorker && selectedWorker !== "all") params.set("workerName", selectedWorker);
@@ -74,6 +83,14 @@ export function RealtimeLogs() {
     websocket.onopen = () => {
       console.log("WebSocket connected");
       setIsConnected(true);
+      setConnectionError("");
+      setIsReconnecting(false);
+      addToast({
+        title: "Connected",
+        description: "Real-time log streaming is active",
+        variant: "success",
+        duration: 2000,
+      });
     };
 
     websocket.onmessage = (event) => {
@@ -89,25 +106,48 @@ export function RealtimeLogs() {
 
     websocket.onerror = (error) => {
       console.error("WebSocket error:", error);
+      const errorMsg = error instanceof ErrorEvent ? error.message : "Connection failed";
+      setConnectionError(errorMsg);
       setIsConnected(false);
     };
 
-    websocket.onclose = () => {
-      console.log("WebSocket disconnected");
+    websocket.onclose = (event) => {
+      console.log("WebSocket disconnected", event.code, event.reason);
+      const reason = event.reason || "Connection closed";
+      setConnectionError(reason);
       setIsConnected(false);
+      setIsReconnecting(false);
     };
 
     setWs(websocket);
+  }, [selectedWorker, selectedLevel, keyword, ws, addToast]);
+
+  React.useEffect(() => {
+    connectWebSocket();
 
     return () => {
-      websocket.close();
+      if (ws) {
+        ws.close();
+      }
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedWorker, selectedLevel, keyword]);
 
   // Auto-scroll to bottom
   React.useEffect(() => {
     logsEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [logs]);
+
+  const handleReconnect = () => {
+    setIsReconnecting(true);
+    addToast({
+      title: "Reconnecting...",
+      description: "Attempting to reestablish connection",
+      variant: "info",
+      duration: 2000,
+    });
+    connectWebSocket();
+  };
 
   const copyLogsToClipboard = () => {
     const logsText = logs
@@ -119,10 +159,61 @@ export function RealtimeLogs() {
     navigator.clipboard
       .writeText(logsText)
       .then(() => {
-        alert("Logs copied to clipboard!");
+        addToast({
+          title: "Copied!",
+          description: "Logs copied to clipboard successfully",
+          variant: "success",
+          duration: 2000,
+        });
       })
       .catch((err) => {
         console.error("Failed to copy logs:", err);
+        addToast({
+          title: "Copy Failed",
+          description: "Failed to copy logs to clipboard",
+          variant: "error",
+          duration: 3000,
+        });
+      });
+  };
+
+  const copyErrorPrompt = () => {
+    const prompt = `## WebSocket Connection Error - Core-Tail Real-time Logs
+
+**Issue:** The real-time log streaming page shows "Disconnected" and cannot establish a WebSocket connection.
+
+**Error Details:**
+\`\`\`
+${connectionError || "WebSocket failed to connect"}
+\`\`\`
+
+**WebSocket URL:** ${window.location.protocol === "https:" ? "wss:" : "ws:"}//${window.location.host}/api/stream/logs
+
+**Request:** Please diagnose and fix the WebSocket connection issue in the Core-Tail worker. The LogStreamer Durable Object may not be properly handling connections or the /api/stream/logs route may have configuration issues.
+
+**Files to check:**
+- src/backend/api/routes/stream.ts
+- src/backend/do/LogStreamer.ts
+- wrangler.jsonc (LOG_STREAMER binding)`;
+
+    navigator.clipboard
+      .writeText(prompt)
+      .then(() => {
+        addToast({
+          title: "Copied!",
+          description: "Error prompt copied to clipboard - share with your agent",
+          variant: "success",
+          duration: 3000,
+        });
+      })
+      .catch((err) => {
+        console.error("Failed to copy prompt:", err);
+        addToast({
+          title: "Copy Failed",
+          description: "Failed to copy error prompt",
+          variant: "error",
+          duration: 3000,
+        });
       });
   };
 
@@ -150,13 +241,69 @@ export function RealtimeLogs() {
             <span>Real-time Logs</span>
             <div className="flex items-center gap-2">
               <Badge variant={isConnected ? "default" : "destructive"}>
-                {isConnected ? "Connected" : "Disconnected"}
+                {isConnected ? (
+                  <>
+                    <WifiIcon className="w-3 h-3 mr-1" />
+                    Connected
+                  </>
+                ) : (
+                  <>
+                    <WifiOffIcon className="w-3 h-3 mr-1" />
+                    Disconnected
+                  </>
+                )}
               </Badge>
               <span className="text-sm text-muted-foreground">{logs.length} logs</span>
             </div>
           </CardTitle>
         </CardHeader>
         <CardContent>
+          {/* Connection Error Banner */}
+          {!isConnected && connectionError && (
+            <div className="mb-4 p-4 bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-800 rounded-lg">
+              <div className="flex items-start justify-between gap-4">
+                <div className="flex-1">
+                  <h3 className="font-semibold text-red-900 dark:text-red-100 mb-1">
+                    Connection Error
+                  </h3>
+                  <p className="text-sm text-red-800 dark:text-red-200 mb-3">
+                    {connectionError}
+                  </p>
+                  <div className="flex gap-2">
+                    <Button
+                      onClick={handleReconnect}
+                      variant="outline"
+                      size="sm"
+                      disabled={isReconnecting}
+                      className="border-red-300 dark:border-red-700"
+                    >
+                      {isReconnecting ? (
+                        <>
+                          <RefreshCwIcon className="w-4 h-4 mr-2 animate-spin" />
+                          Reconnecting...
+                        </>
+                      ) : (
+                        <>
+                          <WifiIcon className="w-4 h-4 mr-2" />
+                          Reconnect
+                        </>
+                      )}
+                    </Button>
+                    <Button
+                      onClick={copyErrorPrompt}
+                      variant="outline"
+                      size="sm"
+                      className="border-red-300 dark:border-red-700"
+                    >
+                      <CopyIcon className="w-4 h-4 mr-2" />
+                      Copy Error Prompt
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
             <Select value={selectedWorker} onValueChange={setSelectedWorker}>
               <SelectTrigger>
