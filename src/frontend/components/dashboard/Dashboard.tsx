@@ -3,6 +3,7 @@ import { Card } from '../ui/card';
 import { StatsCard } from './StatsCard';
 import { WorkersList } from './WorkersList';
 import { RecentErrors } from './RecentErrors';
+import { StatsCharts } from './StatsCharts';
 
 interface DashboardStats {
   overview: {
@@ -10,6 +11,7 @@ interface DashboardStats {
     errorCount: number;
     errorRate: number;
   };
+  byOutcome: Array<{ outcome: string; count: number }>;
   byWorker: Record<string, Record<string, number>>;
 }
 
@@ -57,6 +59,11 @@ export function Dashboard() {
           }
           className="text-red-600"
         />
+      </div>
+
+      {/* Charts */}
+      <div className="mb-8">
+        <StatsCharts stats={stats} loading={loading} />
       </div>
 
       {/* Workers List */}
