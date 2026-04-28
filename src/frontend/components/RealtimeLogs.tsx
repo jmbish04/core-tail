@@ -18,6 +18,9 @@ interface LogEntry {
   statusCode?: number;
   requestUrl?: string;
   requestMethod?: string;
+  level?: string;
+  message?: string;
+  timestamp?: string;
 }
 
 export function RealtimeLogs() {
@@ -40,7 +43,7 @@ export function RealtimeLogs() {
   React.useEffect(() => {
     fetch("/api/logs/workers")
       .then((res) => res.json())
-      .then((data) => setWorkers(data.workers || []))
+      .then((data: any) => setWorkers(data.workers || []))
       .catch((err) => console.error("Failed to load workers:", err));
   }, []);
 
@@ -77,7 +80,7 @@ export function RealtimeLogs() {
       }
 
       const response = await fetch(`/api/logs/sync?${params.toString()}`);
-      const data = await response.json();
+      const data = (await response.json()) as any;
 
       if (data.logs && data.logs.length > 0) {
         setLogs((prev) => {
@@ -222,9 +225,12 @@ export function RealtimeLogs() {
   };
 
   const copyLogsToClipboard = () => {
-    const logsText = logs
+    const logsText = filteredLogs
       .map((log) => {
-        return `[${log.eventTimestamp}] ${log.workerName} - ${log.outcome}\n${JSON.stringify(log.logs, null, 2)}`;
+        const ts = log.eventTimestamp || log.timestamp;
+        const outcome = log.outcome || log.level;
+        const content = log.message ? log.message : JSON.stringify(log.logs, null, 2);
+        return `[${ts}] ${log.workerName} - ${outcome}\n${content}`;
       })
       .join("\n\n");
 
@@ -304,6 +310,39 @@ ${connectionError || "WebSocket failed to connect"}
     };
     return <Badge variant={variants[outcome] || "secondary"}>{outcome}</Badge>;
   };
+
+  const filteredLogs = React.useMemo(() => {
+    return logs.filter((log) => {
+      // Worker filter
+      if (selectedWorker !== "all" && log.workerName !== selectedWorker) {
+        return false;
+      }
+      
+      // Level/Outcome filter
+      if (selectedLevel !== "all") {
+        const logLevel = log.outcome || log.level || "unknown";
+        if (logLevel !== selectedLevel) return false;
+      }
+
+      // Keyword filter
+      if (keyword) {
+        const kw = keyword.toLowerCase();
+        const searchStr = [
+          log.workerName,
+          log.outcome,
+          log.level,
+          log.message,
+          JSON.stringify(log.logs || {}),
+          JSON.stringify(log.exceptions || {})
+        ].join(" ").toLowerCase();
+        
+        if (!searchStr.includes(kw)) {
+          return false;
+        }
+      }
+      return true;
+    });
+  }, [logs, selectedWorker, selectedLevel, keyword]);
 
   return (
     <div className="container mx-auto py-8 px-4">
@@ -428,24 +467,27 @@ ${connectionError || "WebSocket failed to connect"}
           </div>
 
           <div className="bg-black text-green-400 p-4 rounded font-mono text-sm h-[600px] overflow-y-auto">
-            {logs.length === 0 ? (
+            {filteredLogs.length === 0 ? (
               <div className="text-gray-500">Waiting for logs...</div>
             ) : (
-              logs.map((log, idx) => (
+              filteredLogs.map((log, idx) => {
+                const ts = log.eventTimestamp || log.timestamp;
+                const dateStr = ts ? new Date(ts).toLocaleTimeString() : "Unknown Time";
+                const logOutcome = log.outcome || log.level || "unknown";
+                
+                return (
                 <div key={`${log.id}-${idx}`} className="mb-2 border-b border-gray-800 pb-2">
                   <div className="flex items-center gap-2 mb-1">
-                    <span className="text-gray-500">
-                      {new Date(log.eventTimestamp).toLocaleTimeString()}
-                    </span>
+                    <span className="text-gray-500">{dateStr}</span>
                     <span className="text-blue-400">{log.workerName}</span>
-                    {getOutcomeBadge(log.outcome)}
+                    {getOutcomeBadge(logOutcome)}
                     {log.requestMethod && (
                       <span className="text-yellow-400">{log.requestMethod}</span>
                     )}
                   </div>
-                  {log.logs && (
+                  {(log.logs || log.message) && (
                     <pre className="text-xs whitespace-pre-wrap">
-                      {JSON.stringify(log.logs, null, 2)}
+                      {log.message ? log.message : JSON.stringify(log.logs, null, 2)}
                     </pre>
                   )}
                   {log.exceptions && (
@@ -454,7 +496,8 @@ ${connectionError || "WebSocket failed to connect"}
                     </pre>
                   )}
                 </div>
-              ))
+              );
+              })
             )}
             <div ref={logsEndRef} />
           </div>

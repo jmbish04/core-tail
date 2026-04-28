@@ -1,5 +1,5 @@
 /**
- * @fileoverview Threads API routes for AI assistant conversations
+ * @fileoverview Threads API routes for AI agent conversation logs
  */
 
 import { zValidator } from "@hono/zod-validator";
@@ -8,18 +8,17 @@ import { drizzle } from "drizzle-orm/d1";
 import { Hono } from "hono";
 import { z } from "zod";
 
-import type { Bindings, Variables } from "../index";
-
-import { threads, messages } from "../../db/schema";
+import { threads, messages } from "@/db/index";
 import { authMiddleware } from "../middleware/auth";
 
-const threadsRouter = new Hono<{ Bindings: Bindings; Variables: Variables }>();
+const threadsRouter = new Hono<{ Bindings: Env }>();
 
 // Apply auth middleware
 threadsRouter.use("*", authMiddleware);
 
 const createThreadSchema = z.object({
   title: z.string().min(1),
+  agentName: z.string().optional(),
 });
 
 const createMessageSchema = z.object({
@@ -31,16 +30,14 @@ const createMessageSchema = z.object({
 // GET /api/threads
 threadsRouter.get("/", async (c) => {
   const db = drizzle(c.env.DB);
-  const userId = c.get("userId")!;
 
   try {
-    const userThreads = await db
+    const allThreads = await db
       .select()
       .from(threads)
-      .where(eq(threads.userId, userId))
       .orderBy(desc(threads.updatedAt));
 
-    return c.json({ threads: userThreads });
+    return c.json({ threads: allThreads });
   } catch (error) {
     console.error("Error fetching threads:", error);
     return c.json({ error: "Failed to fetch threads" }, 500);
@@ -50,15 +47,14 @@ threadsRouter.get("/", async (c) => {
 // POST /api/threads
 threadsRouter.post("/", zValidator("json", createThreadSchema), async (c) => {
   const db = drizzle(c.env.DB);
-  const userId = c.get("userId")!;
-  const { title } = c.req.valid("json");
+  const { title, agentName } = c.req.valid("json");
 
   try {
     const result = await db
       .insert(threads)
       .values({
-        userId,
         title,
+        agentName,
       })
       .returning();
 
@@ -72,7 +68,6 @@ threadsRouter.post("/", zValidator("json", createThreadSchema), async (c) => {
 // GET /api/threads/:id
 threadsRouter.get("/:id", async (c) => {
   const db = drizzle(c.env.DB);
-  const userId = c.get("userId")!;
   const threadId = parseInt(c.req.param("id"));
 
   try {
@@ -82,13 +77,7 @@ threadsRouter.get("/:id", async (c) => {
       return c.json({ error: "Thread not found" }, 404);
     }
 
-    const thread = threadResult[0];
-
-    if (thread.userId !== userId) {
-      return c.json({ error: "Unauthorized" }, 403);
-    }
-
-    return c.json({ thread });
+    return c.json({ thread: threadResult[0] });
   } catch (error) {
     console.error("Error fetching thread:", error);
     return c.json({ error: "Failed to fetch thread" }, 500);
@@ -98,17 +87,9 @@ threadsRouter.get("/:id", async (c) => {
 // GET /api/threads/:id/messages
 threadsRouter.get("/:id/messages", async (c) => {
   const db = drizzle(c.env.DB);
-  const userId = c.get("userId")!;
   const threadId = parseInt(c.req.param("id"));
 
   try {
-    // Verify thread ownership
-    const threadResult = await db.select().from(threads).where(eq(threads.id, threadId)).limit(1);
-
-    if (threadResult.length === 0 || threadResult[0].userId !== userId) {
-      return c.json({ error: "Thread not found" }, 404);
-    }
-
     const threadMessages = await db
       .select()
       .from(messages)
@@ -125,18 +106,10 @@ threadsRouter.get("/:id/messages", async (c) => {
 // POST /api/threads/:id/messages
 threadsRouter.post("/:id/messages", zValidator("json", createMessageSchema), async (c) => {
   const db = drizzle(c.env.DB);
-  const userId = c.get("userId")!;
   const threadId = parseInt(c.req.param("id"));
   const { role, content, metadata } = c.req.valid("json");
 
   try {
-    // Verify thread ownership
-    const threadResult = await db.select().from(threads).where(eq(threads.id, threadId)).limit(1);
-
-    if (threadResult.length === 0 || threadResult[0].userId !== userId) {
-      return c.json({ error: "Thread not found" }, 404);
-    }
-
     // Create message
     const result = await db
       .insert(messages)
@@ -161,14 +134,12 @@ threadsRouter.post("/:id/messages", zValidator("json", createMessageSchema), asy
 // DELETE /api/threads/:id
 threadsRouter.delete("/:id", async (c) => {
   const db = drizzle(c.env.DB);
-  const userId = c.get("userId")!;
   const threadId = parseInt(c.req.param("id"));
 
   try {
-    // Verify thread ownership
     const threadResult = await db.select().from(threads).where(eq(threads.id, threadId)).limit(1);
 
-    if (threadResult.length === 0 || threadResult[0].userId !== userId) {
+    if (threadResult.length === 0) {
       return c.json({ error: "Thread not found" }, 404);
     }
 

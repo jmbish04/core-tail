@@ -6,16 +6,16 @@ import { desc, eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/d1";
 import { Hono } from "hono";
 
-import type { Bindings } from "../index";
 
-import { healthChecks, workerLogs } from "../../db/schema";
 
-const healthRouter = new Hono<{ Bindings: Bindings }>();
+import { healthChecks, workerLogs } from "@/db/index";
+
+const healthRouter = new Hono<{ Bindings: Env }>();
 
 /**
  * Check log parity between RAW_LOGS KV and D1 worker_logs table
  */
-async function checkLogParity(env: Bindings): Promise<{
+async function checkLogParity(env: Env): Promise<{
   status: string;
   kvCount: number;
   dbCount: number;
@@ -73,7 +73,7 @@ async function checkLogParity(env: Bindings): Promise<{
 /**
  * Check WebSocket/Durable Object health
  */
-async function checkWebSocketStatus(env: Bindings): Promise<{
+async function checkWebSocketStatus(env: Env): Promise<{
   status: string;
   message: string;
   doReachable: boolean;
@@ -203,10 +203,10 @@ healthRouter.get("/history", async (c) => {
   const limit = parseInt(c.req.query("limit") || "100");
 
   try {
-    let query = db.select().from(healthChecks);
+    const query = db.select().from(healthChecks).$dynamic();
 
     if (service) {
-      query = query.where(eq(healthChecks.serviceName, service));
+      query.where(eq(healthChecks.serviceName, service));
     }
 
     const history = await query.orderBy(desc(healthChecks.timestamp)).limit(limit);

@@ -4,9 +4,9 @@
 
 import { Hono } from "hono";
 
-import type { Bindings } from "../index";
 
-const streamRouter = new Hono<{ Bindings: Bindings }>();
+
+const streamRouter = new Hono<{ Bindings: Env }>();
 
 /**
  * GET /api/stream/logs

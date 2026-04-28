@@ -2,9 +2,9 @@ import { zValidator } from "@hono/zod-validator";
 import { Hono } from "hono";
 import { z } from "zod";
 
-import type { Bindings } from "../index";
 
-const analysisRouter = new Hono<{ Bindings: Bindings }>();
+
+const analysisRouter = new Hono<{ Bindings: Env }>();
 
 analysisRouter.post(
   "/analyze",

@@ -1,3 +1,19 @@
 {
-  "tailwindCSS.classFunctions": ["cva", "cn"]
+  "tailwindCSS.classFunctions": ["cva", "cn"],
+  "json.format.keepLines": true,
+  "[jsonc]": {
+    "editor.formatOnSave": false,
+    "editor.defaultFormatter": "vscode.json-language-features"
+  },
+  "files.associations": {
+    "*.css": "tailwindcss",
+    // Agent definition files in the sync orchestration layer → Markdown
+    "**/.github/agents/*.md": "markdown",
+    "**/.github/agents/*.agent.md": "markdown",
+    // Workflow templates in the sync orchestration layer → YAML
+    "**/.github/workflows/*.yml": "yaml",
+    "**/.github/workflows/*.yaml": "yaml",
+    "wrangler.jsonc": "jsonc"
+  },
+  "css.validate": false,
 }

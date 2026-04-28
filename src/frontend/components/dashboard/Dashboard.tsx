@@ -1,6 +1,9 @@
 import * as React from "react";
+import { logger } from "@/lib/logger";
+import { apiFetch } from "@/lib/api";
+import { ActivityIcon, AlertTriangleIcon, PercentIcon, ServerIcon } from "lucide-react";
 
-import { Card } from "../ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 import { RecentErrors } from "./RecentErrors";
 import { StatsCard } from "./StatsCard";
 import { StatsCharts } from "./StatsCharts";
@@ -26,54 +29,89 @@ export function Dashboard() {
 
   async function loadStats() {
     try {
-      const res = await fetch("/api/logs/stats");
-      const data = await res.json();
+      const { ok, status, data } = await apiFetch<DashboardStats>("/api/logs/stats");
+      if (!ok) {
+        console.error("[Dashboard] Failed to load stats, status:", status);
+        logger.error(
+          "Failed to load dashboard stats",
+          (data as any).error || "Server returned " + status,
+          `## API Error - Dashboard Stats\n\n**Endpoint:** /api/logs/stats\n**Status:** ${status}`
+        );
+        return;
+      }
       setStats(data);
     } catch (error) {
-      console.error("Error loading stats:", error);
+      console.error("[Dashboard] Network error:", error);
+      logger.error(
+        "Network Error",
+        error,
+        `## Dashboard Load Error\n\nFailed to fetch dashboard stats from /api/logs/stats.`
+      );
     } finally {
       setLoading(false);
     }
   }
 
   return (
-    <div className="container mx-auto py-8 px-4">
-      <h1 className="text-4xl font-bold mb-8">Worker Logs Dashboard</h1>
+    <div className="container mx-auto py-8 px-4 space-y-8">
+      <h1 className="text-4xl font-bold text-foreground">Worker Logs Dashboard</h1>
 
-      {/* Global Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-        <StatsCard title="Total Logs" value={loading ? "-" : stats?.overview.totalLogs || 0} />
+      {/* Global Stats Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <StatsCard
+          title="Total Logs"
+          value={loading || !stats?.overview ? "—" : stats.overview.totalLogs.toLocaleString()}
+          icon={<ActivityIcon className="h-4 w-4" />}
+        />
         <StatsCard
           title="Error Count"
-          value={loading ? "-" : stats?.overview.errorCount || 0}
-          className="text-red-600"
+          value={loading || !stats?.overview ? "—" : stats.overview.errorCount.toLocaleString()}
+          className="text-red-400"
+          icon={<AlertTriangleIcon className="h-4 w-4" />}
         />
         <StatsCard
           title="Error Rate"
-          value={loading ? "-%" : `${stats?.overview.errorRate.toFixed(2) || 0}%`}
-          className="text-red-600"
+          value={loading || !stats?.overview ? "—%" : `${stats.overview.errorRate?.toFixed(2) || 0}%`}
+          className={
+            stats?.overview?.errorRate && stats.overview.errorRate > 10
+              ? "text-red-400"
+              : "text-emerald-400"
+          }
+          icon={<PercentIcon className="h-4 w-4" />}
         />
       </div>
 
       {/* Charts */}
-      <div className="mb-8">
-        <StatsCharts stats={stats} loading={loading} />
-      </div>
+      <StatsCharts stats={stats} loading={loading} />
 
-      {/* Workers List */}
-      <Card className="p-6 mb-8">
-        <h2 className="text-2xl font-bold mb-4">Workers</h2>
-        {loading ? (
-          <p className="text-gray-500">Loading workers...</p>
-        ) : (
-          <WorkersList stats={stats} />
-        )}
+      {/* Workers Table */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-foreground">
+            <ServerIcon className="h-5 w-5" />
+            Workers
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {loading ? (
+            <p className="text-muted-foreground py-4">Loading workers...</p>
+          ) : (
+            <WorkersList stats={stats} />
+          )}
+        </CardContent>
       </Card>
 
       {/* Recent Errors */}
-      <Card className="p-6">
-        <h2 className="text-2xl font-bold mb-4">Recent Errors</h2>
-        <RecentErrors />
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-foreground">
+            <AlertTriangleIcon className="h-5 w-5 text-red-400" />
+            Recent Errors
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <RecentErrors />
+        </CardContent>
       </Card>
     </div>
   );

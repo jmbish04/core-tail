@@ -1,4 +1,6 @@
 import * as React from "react";
+import { logger } from "@/lib/logger";
+import { apiFetch } from "@/lib/api";
 
 interface LogEntry {
   id: number;
@@ -17,11 +19,22 @@ export function RecentErrors() {
 
   async function loadErrors() {
     try {
-      const res = await fetch("/api/logs?outcome=exception&limit=10");
-      const data = await res.json();
-      setErrors(data.logs);
+      const { ok, status, data } = await apiFetch("/api/logs?outcome=exception&limit=10");
+      if (!ok) {
+        logger.error(
+          "Failed to load recent errors",
+          data.error || "Server returned " + status,
+          `## API Error - Recent Errors\n\n**Endpoint:** /api/logs?outcome=exception&limit=10\n**Status:** ${status}`
+        );
+        return;
+      }
+      setErrors(data.logs || []);
     } catch (error) {
-      console.error("Error loading recent errors:", error);
+      logger.error(
+        "Network Error",
+        error,
+        `## Recent Errors Load Error\n\nFailed to fetch from /api/logs?outcome=exception.`
+      );
     } finally {
       setLoading(false);
     }

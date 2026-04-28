@@ -5,36 +5,8 @@
     {
       "idx": 0,
       "version": "6",
-      "when": 1773812251397,
-      "tag": "0000_needy_screwball",
-      "breakpoints": true
-    },
-    {
-      "idx": 1,
-      "version": "6",
-      "when": 1774504561000,
-      "tag": "0001_smart_kingpin",
-      "breakpoints": true
-    },
-    {
-      "idx": 2,
-      "version": "6",
-      "when": 1777253182936,
-      "tag": "0002_curvy_pete_wisdom",
-      "breakpoints": true
-    },
-    {
-      "idx": 3,
-      "version": "6",
-      "when": 1777337313067,
-      "tag": "0003_worthless_hairball",
-      "breakpoints": true
-    },
-    {
-      "idx": 4,
-      "version": "6",
-      "when": 1777358229809,
-      "tag": "0004_material_black_widow",
+      "when": 1777406532934,
+      "tag": "0000_legal_nico_minoru",
       "breakpoints": true
     }
   ]

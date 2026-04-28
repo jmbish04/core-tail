@@ -1,5 +1,7 @@
 import { CopyIcon, LoaderIcon, SparklesIcon, XIcon } from "lucide-react";
 import * as React from "react";
+import { logger } from "@/lib/logger";
+import { apiFetch } from "@/lib/api";
 
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
@@ -31,7 +33,7 @@ export function ErrorAnalysisModal({ workerName, error, onClose }: Props) {
     setStatus("Initializing AI analysis...");
 
     try {
-      const response = await fetch("/api/analysis/analyze", {
+      const { ok, data: result } = await apiFetch("/api/analysis/analyze", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -44,15 +46,15 @@ export function ErrorAnalysisModal({ workerName, error, onClose }: Props) {
         }),
       });
 
-      if (!response.ok) {
+      if (!ok) {
         throw new Error("Analysis failed");
       }
 
-      const result = await response.json();
       setAnalysis(result.analysis || "No analysis available");
       setStatus("Analysis complete");
     } catch (err) {
-      console.error("Error analyzing:", err);
+      console.error("[ErrorAnalysisModal] Error analyzing:", err);
+      logger.error("Analysis Failed", err, `## AI Analysis Error\n\nFailed to analyze error for worker: ${workerName}`);
       setAnalysis("Failed to analyze error. Please try again.");
       setStatus("Error");
     } finally {
@@ -61,9 +63,14 @@ export function ErrorAnalysisModal({ workerName, error, onClose }: Props) {
   };
 
   const copyAnalysisToClipboard = () => {
-    navigator.clipboard.writeText(analysis).then(() => {
-      alert("Analysis copied to clipboard!");
-    });
+    navigator.clipboard.writeText(analysis)
+      .then(() => {
+        logger.success("Copied!", "Analysis copied to clipboard");
+      })
+      .catch((err) => {
+        console.error("[ErrorAnalysisModal] Copy failed:", err);
+        logger.error("Copy Failed", err, "Failed to copy analysis to clipboard");
+      });
   };
 
   return (

@@ -1,4 +1,6 @@
 import * as React from "react";
+import { logger } from "@/lib/logger";
+import { apiFetch } from "@/lib/api";
 
 import { Card } from "../ui/card";
 
@@ -27,22 +29,25 @@ export function WorkerStats({ workerName }: WorkerStatsProps) {
 
   async function loadStats() {
     try {
-      const res = await fetch(`/api/logs/stats?workerName=${encodeURIComponent(workerName)}`);
-      const data = await res.json();
-      const workerStats = data.byWorker[workerName] || {};
+      const { data } = await apiFetch(`/api/logs/stats?workerName=${encodeURIComponent(workerName)}`);
+      const workerStatsData = data.byWorker[workerName] || {};
 
-      const total = Object.values(workerStats).reduce((sum: number, count: any) => sum + count, 0);
-      const success = workerStats.ok || 0;
-      const exceptions = workerStats.exception || 0;
+      const total = Object.values(workerStatsData).reduce((sum: number, count: any) => sum + count, 0);
+      const success = workerStatsData.ok || 0;
+      const exceptions = workerStatsData.exception || 0;
       const other =
-        (workerStats.canceled || 0) +
-        (workerStats.exceededCpu || 0) +
-        (workerStats.exceededMemory || 0) +
-        (workerStats.unknown || 0);
+        (workerStatsData.canceled || 0) +
+        (workerStatsData.exceededCpu || 0) +
+        (workerStatsData.exceededMemory || 0) +
+        (workerStatsData.unknown || 0);
 
       setStats({ total, success, exceptions, other });
-    } catch (error) {
-      console.error("Error loading worker stats:", error);
+    } catch (error: any) {
+      logger.error(
+        "Failed to Load Stats",
+        error,
+        `## API Error - Worker Stats\n\nFailed to load worker stats for ${workerName}.\n\nError: ${error.message}`
+      );
     }
   }
 

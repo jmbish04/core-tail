@@ -8,7 +8,7 @@
 import { DurableObject } from "cloudflare:workers";
 
 export class LogStreamer extends DurableObject {
-  constructor(state: DurableObjectState, env: any) {
+  constructor(state: DurableObjectState, env: Env) {
     super(state, env);
 
     // CRITICAL FIX #1: Auto-reply to application-level pings without waking the DO.

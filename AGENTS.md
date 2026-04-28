@@ -90,11 +90,41 @@ const handleCopy = () => {
 - Maintain consistent styling with Tailwind CSS
 - Use lucide-react for icons
 
-### Error Handling
-- Always provide user-friendly error messages
-- Log technical details to console for debugging
-- Use toast notifications for user-facing errors
-- Provide actionable next steps when possible
+### Error Handling (MANDATORY)
+
+> **Full specification:** See `.agent/rules/frontend-error-handling.md`
+
+**All errors MUST use BOTH:**
+1. `console.error("[ComponentName] context:", err)` — for developer console
+2. `logger.error("Title", err, "context")` — for user-facing toast via `FrontendLogger`
+
+```tsx
+import { logger } from "@/lib/logger";
+
+// ❌ FORBIDDEN — empty catch
+} catch (e) {}
+
+// ❌ FORBIDDEN — console-only, no user feedback
+} catch (e) { console.error(e); }
+
+// ✅ CORRECT — both console + logger
+} catch (err) {
+  console.error("[MyComponent] Failed:", err);
+  logger.error("Load Failed", err, "## Context\n\nError details for agent");
+}
+```
+
+**All API fetch calls MUST use `apiFetch` from `@/lib/api`:**
+```tsx
+import { apiFetch } from "@/lib/api";
+
+// ❌ WRONG — raw fetch crashes on non-JSON responses
+const res = await fetch("/api/logs/stats");
+const data = await res.json();
+
+// ✅ CORRECT — safe parsing
+const { ok, status, data } = await apiFetch("/api/logs/stats");
+```
 
 ### Accessibility
 - Include proper ARIA labels
@@ -106,8 +136,10 @@ const handleCopy = () => {
 
 Before submitting code, verify:
 - [ ] No usage of `alert()`, `confirm()`, or `prompt()`
-- [ ] All user feedback uses shadcn components
-- [ ] Error messages are user-friendly
+- [ ] No empty `catch` blocks — every catch has `console.error` + `logger`
+- [ ] All API calls use `apiFetch` from `@/lib/api`
+- [ ] All user feedback uses `logger` (success, error, info, warning)
+- [ ] All clipboard operations have `.catch()` handlers with `logger.error`
 - [ ] TypeScript types are properly defined
 - [ ] Components are accessible
 - [ ] Styling is consistent with the design system

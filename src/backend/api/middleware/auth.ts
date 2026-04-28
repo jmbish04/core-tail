@@ -1,8 +1,7 @@
 import { createMiddleware } from "hono/factory";
+import { getWorkerApiKey } from "@/utils/secrets";
 
-import type { Bindings, Variables } from "../index";
-
-export const authMiddleware = createMiddleware<{ Bindings: Bindings; Variables: Variables }>(
+export const authMiddleware = createMiddleware<{ Bindings: Env }>(
   async (c, next) => {
     const authHeader = c.req.header("Authorization");
 
@@ -12,10 +11,9 @@ export const authMiddleware = createMiddleware<{ Bindings: Bindings; Variables: 
 
     const token = authHeader.split(" ")[1];
 
-    // For the admin dashboard, we just use the WEBHOOK_SECRET as a simple password
-    if (c.env.WEBHOOK_SECRET && token === c.env.WEBHOOK_SECRET) {
-      // Treat as admin
-      c.set("userId", 1); // Mock user ID for admin
+    // Simple token auth using WORKER_API_KEY
+    const apiKey = await getWorkerApiKey(c.env as unknown as Env);
+    if (apiKey && token === apiKey) {
       return next();
     }
 

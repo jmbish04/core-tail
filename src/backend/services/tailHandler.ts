@@ -2,7 +2,7 @@ import type { ExecutionContext } from "@cloudflare/workers-types";
 
 import { drizzle } from "drizzle-orm/d1";
 
-import { workerLogs, logs, metaInternalLogs } from "../db/schema";
+import { workerLogs, logs, metaInternalLogs } from "../db";
 
 export async function processTailEvents(events: any[], env: any, ctx: ExecutionContext) {
   if (!env.DB) {
@@ -162,16 +162,19 @@ export async function processTailEvents(events: any[], env: any, ctx: ExecutionC
     // Wait for all KV writes to complete
     await Promise.all(kvPromises);
 
-    // Batch insert to D1
+    // Batch insert to D1 using single statements to avoid Drizzle's autoIncrement explicit null bug on arrays
     try {
-      if (workerLogsEntries.length > 0) {
-        await db.insert(workerLogs).values(workerLogsEntries);
-      }
-      if (logsToInsert.length > 0) {
-        await db.insert(logs).values(logsToInsert);
-      }
-      if (metaLogsToInsert.length > 0) {
-        await db.insert(metaInternalLogs).values(metaLogsToInsert);
+      const batchStatements: any[] = [];
+      
+      workerLogsEntries.forEach(entry => batchStatements.push(db.insert(workerLogs).values(entry)));
+      logsToInsert.forEach(entry => batchStatements.push(db.insert(logs).values(entry)));
+      metaLogsToInsert.forEach(entry => batchStatements.push(db.insert(metaInternalLogs).values(entry)));
+
+      // D1 allows a maximum of 100 statements per batch call
+      const chunkSize = 100;
+      for (let i = 0; i < batchStatements.length; i += chunkSize) {
+        const chunk = batchStatements.slice(i, i + chunkSize);
+        await db.batch(chunk as any);
       }
     } catch (error) {
       console.error("Error inserting worker logs:", error);

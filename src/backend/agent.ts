@@ -6,13 +6,6 @@ type AgentState = {
   status: "idle" | "analyzing" | "complete" | "error";
 };
 
-interface Env {
-  LOG_ANALYZER_AGENT: any; // DurableObjectNamespace
-  AI: Ai;
-  CLOUDFLARE_ACCOUNT_ID?: string;
-  CLOUDFLARE_API_TOKEN?: string;
-  GEMINI_API_KEY?: string;
-}
 
 export class LogAnalyzerAgent extends Agent<Env, AgentState> {
   constructor(ctx: any, env: Env) {
@@ -38,12 +31,12 @@ export class LogAnalyzerAgent extends Agent<Env, AgentState> {
         };
 
         let sourceCode = "// Source code unavailable";
-        if (this.env.CLOUDFLARE_ACCOUNT_ID && this.env.CLOUDFLARE_API_TOKEN) {
+        if (this.env.CLOUDFLARE_ACCOUNT_ID && this.env.CLOUDFLARE_WRANGLER_API_TOKEN) {
           const res = await fetch(
             `https://api.cloudflare.com/client/v4/accounts/${this.env.CLOUDFLARE_ACCOUNT_ID}/workers/scripts/${data.workerName}`,
             {
               headers: {
-                Authorization: `Bearer ${this.env.CLOUDFLARE_API_TOKEN}`,
+                Authorization: `Bearer ${this.env.CLOUDFLARE_WRANGLER_API_TOKEN}`,
               },
             },
           );

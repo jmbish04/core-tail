@@ -1,5 +1,7 @@
 import { AlertCircleIcon, CopyIcon, SparklesIcon } from "lucide-react";
 import * as React from "react";
+import { logger } from "@/lib/logger";
+import { apiFetch } from "@/lib/api";
 
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
@@ -29,16 +31,22 @@ export function WorkerDetail({ workerName }: Props) {
   React.useEffect(() => {
     if (!workerName) return;
 
-    fetch(`/api/logs/worker/${workerName}/errors`)
-      .then((res) => res.json())
-      .then((data) => {
+    const loadErrors = async () => {
+      try {
+        const { data } = await apiFetch(`/api/logs/worker/${workerName}/errors`);
         setErrors(data.errors || []);
+      } catch (err: any) {
+        console.error("[WorkerDetail] Failed to load errors:", err);
+        logger.error(
+          "Failed to load errors",
+          err,
+          `## API Error - Worker Detail\n\nFailed to load errors for worker: ${workerName}.\n\nError: ${err.message}`
+        );
+      } finally {
         setLoading(false);
-      })
-      .catch((err) => {
-        console.error("Failed to load errors:", err);
-        setLoading(false);
-      });
+      }
+    };
+    loadErrors();
   }, [workerName]);
 
   const handleAnalyzeError = (error: UniqueError) => {
@@ -47,9 +55,14 @@ export function WorkerDetail({ workerName }: Props) {
   };
 
   const copyErrorToClipboard = (error: UniqueError) => {
-    navigator.clipboard.writeText(error.message).then(() => {
-      alert("Error message copied to clipboard!");
-    });
+    navigator.clipboard.writeText(error.message)
+      .then(() => {
+        logger.success("Copied!", "Error message copied to clipboard");
+      })
+      .catch((err) => {
+        console.error("[WorkerDetail] Copy failed:", err);
+        logger.error("Copy Failed", err, "Failed to copy error message to clipboard");
+      });
   };
 
   if (loading) {

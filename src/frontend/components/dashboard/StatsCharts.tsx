@@ -1,19 +1,29 @@
 import * as React from "react";
 import {
-  BarChart,
   Bar,
-  PieChart,
+  BarChart,
+  CartesianGrid,
+  Label,
   Pie,
-  Cell,
+  PieChart,
+  PolarGrid,
+  PolarRadiusAxis,
+  RadialBar,
+  RadialBarChart,
   XAxis,
   YAxis,
-  CartesianGrid,
-  Tooltip,
-  Legend,
-  ResponsiveContainer,
 } from "recharts";
 
-import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "../ui/card";
+import {
+  ChartContainer,
+  ChartLegend,
+  ChartLegendContent,
+  ChartTooltip,
+  ChartTooltipContent,
+  type ChartConfig,
+} from "../ui/chart";
+import { AlertTriangleIcon, ActivityIcon, TrendingDownIcon, TrendingUpIcon } from "lucide-react";
 
 interface DashboardStats {
   overview: {
@@ -30,115 +40,297 @@ interface Props {
   loading: boolean;
 }
 
-const COLORS = ["#22c55e", "#ef4444", "#f59e0b", "#3b82f6", "#8b5cf6"];
+// Outcome colors mapped to semantic meaning
+const OUTCOME_COLORS: Record<string, string> = {
+  ok: "hsl(142, 76%, 46%)",
+  exception: "hsl(0, 84%, 60%)",
+  canceled: "hsl(45, 93%, 53%)",
+  exceededCpu: "hsl(25, 95%, 53%)",
+  exceededMemory: "hsl(280, 68%, 60%)",
+  responseStreamDisconnected: "hsl(200, 80%, 55%)",
+  unknown: "hsl(220, 13%, 46%)",
+};
 
 export function StatsCharts({ stats, loading }: Props) {
   if (loading || !stats) {
-    return <div className="text-gray-500">Loading charts...</div>;
+    return (
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {[1, 2].map((i) => (
+          <Card key={i} className="animate-pulse">
+            <CardHeader>
+              <div className="h-5 bg-zinc-800 rounded w-40" />
+            </CardHeader>
+            <CardContent>
+              <div className="h-[250px] bg-zinc-900 rounded" />
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+    );
   }
 
-  // Prepare data for outcome pie chart
+  // — Donut chart: outcome distribution —
   const outcomeData = stats.byOutcome.map((item) => ({
-    name: item.outcome,
-    value: item.count,
+    outcome: item.outcome,
+    count: item.count,
+    fill: OUTCOME_COLORS[item.outcome] || OUTCOME_COLORS.unknown,
   }));
 
-  // Prepare data for worker bar chart
+  const outcomeConfig: ChartConfig = {
+    count: { label: "Events" },
+    ...Object.fromEntries(
+      stats.byOutcome.map((item) => [
+        item.outcome,
+        {
+          label: item.outcome.replace(/([A-Z])/g, " $1").replace(/^./, (s) => s.toUpperCase()),
+          color: OUTCOME_COLORS[item.outcome] || OUTCOME_COLORS.unknown,
+        },
+      ]),
+    ),
+  };
+
+  const totalEvents = stats.overview.totalLogs;
+
+  // — Bar chart: per-worker breakdown —
   const workerData = Object.entries(stats.byWorker)
     .map(([workerName, outcomes]) => {
-      const total = Object.values(outcomes).reduce((sum, count) => sum + count, 0);
       const errors =
         (outcomes.exception || 0) +
         (outcomes.error || 0) +
         (outcomes.exceededCpu || 0) +
         (outcomes.exceededMemory || 0);
       return {
-        name: workerName.length > 20 ? workerName.substring(0, 20) + "..." : workerName,
-        total,
-        errors,
+        worker: workerName.length > 18 ? workerName.substring(0, 18) + "…" : workerName,
         ok: outcomes.ok || 0,
+        errors,
+        canceled: outcomes.canceled || 0,
+        disconnected: outcomes.responseStreamDisconnected || 0,
       };
     })
-    .sort((a, b) => b.total - a.total)
-    .slice(0, 10); // Top 10 workers
+    .sort((a, b) => (b.ok + b.errors) - (a.ok + a.errors))
+    .slice(0, 10);
+
+  const workerConfig: ChartConfig = {
+    ok: { label: "Success", color: "hsl(142, 76%, 46%)" },
+    errors: { label: "Errors", color: "hsl(0, 84%, 60%)" },
+    canceled: { label: "Canceled", color: "hsl(45, 93%, 53%)" },
+    disconnected: { label: "Disconnected", color: "hsl(200, 80%, 55%)" },
+  };
+
+  // — Radial gauge: error rate —
+  const errorRateAngle = Math.min((stats.overview.errorRate / 100) * 360, 360);
+  const radialData = [{ errorRate: stats.overview.errorRate, fill: "hsl(0, 84%, 60%)" }];
+  const radialConfig: ChartConfig = {
+    errorRate: { label: "Error Rate", color: "hsl(0, 84%, 60%)" },
+  };
+
+  const isHighError = stats.overview.errorRate > 10;
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-      {/* Outcome Distribution Pie Chart */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Log Distribution by Outcome</CardTitle>
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      {/* Donut: Outcome Distribution */}
+      <Card className="flex flex-col">
+        <CardHeader className="items-center pb-0">
+          <CardTitle className="text-foreground">Log Distribution</CardTitle>
+          <CardDescription className="text-muted-foreground">By outcome type</CardDescription>
         </CardHeader>
-        <CardContent>
-          <ResponsiveContainer width="100%" height={300}>
+        <CardContent className="flex-1 pb-0">
+          <ChartContainer
+            config={outcomeConfig}
+            className="mx-auto aspect-square max-h-[250px]"
+          >
             <PieChart>
+              <ChartTooltip cursor={false} content={<ChartTooltipContent hideLabel />} />
               <Pie
                 data={outcomeData}
-                cx="50%"
-                cy="50%"
-                labelLine={false}
-                label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
-                outerRadius={80}
-                fill="#8884d8"
-                dataKey="value"
+                dataKey="count"
+                nameKey="outcome"
+                innerRadius={60}
+                strokeWidth={5}
               >
-                {outcomeData.map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                ))}
+                <Label
+                  content={({ viewBox }) => {
+                    if (viewBox && "cx" in viewBox && "cy" in viewBox) {
+                      return (
+                        <text
+                          x={viewBox.cx}
+                          y={viewBox.cy}
+                          textAnchor="middle"
+                          dominantBaseline="middle"
+                        >
+                          <tspan
+                            x={viewBox.cx}
+                            y={viewBox.cy}
+                            className="fill-foreground text-3xl font-bold"
+                          >
+                            {totalEvents.toLocaleString()}
+                          </tspan>
+                          <tspan
+                            x={viewBox.cx}
+                            y={(viewBox.cy || 0) + 24}
+                            className="fill-muted-foreground"
+                          >
+                            Total Events
+                          </tspan>
+                        </text>
+                      );
+                    }
+                  }}
+                />
               </Pie>
-              <Tooltip />
             </PieChart>
-          </ResponsiveContainer>
+          </ChartContainer>
         </CardContent>
-      </Card>
-
-      {/* Worker Activity Bar Chart */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Top Workers by Activity</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={workerData}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="name" angle={-45} textAnchor="end" height={100} />
-              <YAxis />
-              <Tooltip />
-              <Legend />
-              <Bar dataKey="ok" stackId="a" fill="#22c55e" name="Success" />
-              <Bar dataKey="errors" stackId="a" fill="#ef4444" name="Errors" />
-            </BarChart>
-          </ResponsiveContainer>
-        </CardContent>
-      </Card>
-
-      {/* Error Rate Trend (placeholder for future time-series data) */}
-      <Card className="lg:col-span-2">
-        <CardHeader>
-          <CardTitle>Error Rate Overview</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-3 gap-4">
-            <div className="text-center">
-              <div className="text-3xl font-bold text-blue-600">
-                {stats.overview.totalLogs.toLocaleString()}
-              </div>
-              <div className="text-sm text-gray-500">Total Logs</div>
-            </div>
-            <div className="text-center">
-              <div className="text-3xl font-bold text-red-600">
-                {stats.overview.errorCount.toLocaleString()}
-              </div>
-              <div className="text-sm text-gray-500">Error Count</div>
-            </div>
-            <div className="text-center">
-              <div className="text-3xl font-bold text-orange-600">
-                {stats.overview.errorRate.toFixed(2)}%
-              </div>
-              <div className="text-sm text-gray-500">Error Rate</div>
-            </div>
+        <CardFooter className="flex-col gap-2 text-sm">
+          <div className="flex items-center gap-2 leading-none font-medium text-foreground">
+            <ActivityIcon className="h-4 w-4" />
+            {stats.byOutcome.length} outcome types tracked
           </div>
+        </CardFooter>
+      </Card>
+
+      {/* Bar: Per-Worker Breakdown */}
+      <Card className="flex flex-col">
+        <CardHeader className="items-center pb-0">
+          <CardTitle className="text-foreground">Worker Activity</CardTitle>
+          <CardDescription className="text-muted-foreground">
+            Top {workerData.length} workers by volume
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="flex-1 pb-0">
+          <ChartContainer config={workerConfig} className="mx-auto w-full max-h-[250px]">
+            <BarChart accessibilityLayer data={workerData}>
+              <CartesianGrid vertical={false} stroke="hsl(240, 4%, 16%)" />
+              <XAxis
+                dataKey="worker"
+                tickLine={false}
+                tickMargin={10}
+                axisLine={false}
+                tick={{ fill: "hsl(0, 0%, 90%)", fontSize: 11, fontWeight: 500 }}
+              />
+              <YAxis
+                tickLine={false}
+                axisLine={false}
+                tick={{ fill: "hsl(0, 0%, 70%)", fontSize: 11 }}
+              />
+              <ChartTooltip content={<ChartTooltipContent hideLabel />} />
+              <ChartLegend content={<ChartLegendContent />} />
+              <Bar
+                dataKey="ok"
+                stackId="a"
+                fill="var(--color-ok)"
+                radius={[0, 0, 4, 4]}
+              />
+              <Bar
+                dataKey="errors"
+                stackId="a"
+                fill="var(--color-errors)"
+                radius={[0, 0, 0, 0]}
+              />
+              <Bar
+                dataKey="canceled"
+                stackId="a"
+                fill="var(--color-canceled)"
+                radius={[0, 0, 0, 0]}
+              />
+              <Bar
+                dataKey="disconnected"
+                stackId="a"
+                fill="var(--color-disconnected)"
+                radius={[4, 4, 0, 0]}
+              />
+            </BarChart>
+          </ChartContainer>
         </CardContent>
+        <CardFooter className="flex-col gap-2 text-sm">
+          <div className="flex items-center gap-2 leading-none font-medium text-foreground">
+            {Object.keys(stats.byWorker).length} worker{Object.keys(stats.byWorker).length !== 1 ? "s" : ""} reporting
+          </div>
+        </CardFooter>
+      </Card>
+
+      {/* Radial Gauge: Error Rate */}
+      <Card className="flex flex-col">
+        <CardHeader className="items-center pb-0">
+          <CardTitle className="text-foreground">Error Rate</CardTitle>
+          <CardDescription className="text-muted-foreground">
+            {stats.overview.errorCount.toLocaleString()} of {stats.overview.totalLogs.toLocaleString()} events
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="flex flex-1 items-center pb-0">
+          <ChartContainer
+            config={radialConfig}
+            className="mx-auto aspect-square w-full max-w-[250px]"
+          >
+            <RadialBarChart
+              data={radialData}
+              startAngle={0}
+              endAngle={errorRateAngle}
+              innerRadius={80}
+              outerRadius={110}
+            >
+              <PolarGrid
+                gridType="circle"
+                radialLines={false}
+                stroke="none"
+                className="first:fill-muted last:fill-background"
+                polarRadius={[86, 74]}
+              />
+              <RadialBar
+                dataKey="errorRate"
+                background
+                cornerRadius={10}
+                fill="var(--color-errorRate)"
+              />
+              <PolarRadiusAxis tick={false} tickLine={false} axisLine={false}>
+                <Label
+                  content={({ viewBox }) => {
+                    if (viewBox && "cx" in viewBox && "cy" in viewBox) {
+                      return (
+                        <text
+                          x={viewBox.cx}
+                          y={viewBox.cy}
+                          textAnchor="middle"
+                          dominantBaseline="middle"
+                        >
+                          <tspan
+                            x={viewBox.cx}
+                            y={viewBox.cy}
+                            className={`fill-foreground text-4xl font-bold ${isHighError ? "fill-red-400" : "fill-emerald-400"}`}
+                          >
+                            {stats.overview.errorRate.toFixed(1)}%
+                          </tspan>
+                          <tspan
+                            x={viewBox.cx}
+                            y={(viewBox.cy || 0) + 24}
+                            className="fill-muted-foreground text-sm"
+                          >
+                            Error Rate
+                          </tspan>
+                        </text>
+                      );
+                    }
+                  }}
+                />
+              </PolarRadiusAxis>
+            </RadialBarChart>
+          </ChartContainer>
+        </CardContent>
+        <CardFooter className="flex-col gap-2 text-sm">
+          <div className={`flex items-center gap-2 leading-none font-medium ${isHighError ? "text-red-400" : "text-emerald-400"}`}>
+            {isHighError ? (
+              <>
+                <AlertTriangleIcon className="h-4 w-4" />
+                Above 10% threshold — needs attention
+              </>
+            ) : (
+              <>
+                <TrendingDownIcon className="h-4 w-4" />
+                Healthy error rate
+              </>
+            )}
+          </div>
+        </CardFooter>
       </Card>
     </div>
   );
