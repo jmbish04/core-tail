@@ -28,7 +28,9 @@ const handler: ExportedHandler<Env> = {
     }
 
     // 2. Delegate everything else to the Astro SSR handler
-    if (astroApp && astroApp.default && astroApp.default.fetch) {
+    if (astroApp && typeof astroApp.fetch === "function") {
+      return astroApp.fetch(request, env, ctx);
+    } else if (astroApp && astroApp.default && typeof astroApp.default.fetch === "function") {
       return astroApp.default.fetch(request, env, ctx);
     }
 

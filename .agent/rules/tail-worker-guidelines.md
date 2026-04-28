@@ -46,3 +46,15 @@ INSTRUCTION: Review the existing `.agent/rules/` directory first, and then merge
 23. **Complete Fallback Coverage**: When rendering realtime connections via WebSockets in Shadcn components, fallback configurations (e.g., `setInterval` fetching against `/api/logs/sync`) must be fully implemented and integrated with the state variables `isPolling`, `isReconnecting`, and `isConnected`.
 24. **Complete Component Rendering**: Never truncate UI returns or elements utilizing `<Select>` or `<Card>` blocks from Shadcn in code generation tasks. The full tree, including child item iterators, must be output to avoid broken local states.
 25. **Full Code Delivery**: Always respond with complete, end-to-end code. Never use shortcuts like `// ... rest of code` or truncate component implementations. Every file modification must include the entire file content to ensure no partial implementations remain.
+
+## Astro SSR Integration
+
+26. **Default Export Resolution**: When importing the Astro SSR handler (e.g., `import astroApp from "../dist/_worker.js/index.js"`), always check for the fetch method at the top level first (`astroApp.fetch`), then fall back to nested default exports (`astroApp.default.fetch`). The Astro build output structure varies between builds, so the import logic must be resilient to both patterns:
+    ```typescript
+    if (astroApp && typeof astroApp.fetch === "function") {
+      return astroApp.fetch(request, env, ctx);
+    } else if (astroApp && astroApp.default && typeof astroApp.default.fetch === "function") {
+      return astroApp.default.fetch(request, env, ctx);
+    }
+    ```
+27. **Build Output Verification**: After running `npm run build`, verify that the `dist/_worker.js/index.js` file exists and exports a valid fetch handler. The Astro Cloudflare adapter should generate this file automatically, but the build process may fail silently if dependencies are missing or configuration is incorrect.
