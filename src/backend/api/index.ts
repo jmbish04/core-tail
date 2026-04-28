@@ -19,6 +19,7 @@ import { healthRouter } from "./routes/health";
 import { logsRouter } from "./routes/logs";
 import { notificationsRouter } from "./routes/notifications";
 import { openapiApp } from "./routes/openapi";
+import { streamRouter } from "./routes/stream";
 import { threadsRouter } from "./routes/threads";
 
 export type Bindings = {
@@ -64,6 +65,7 @@ app.use("/api/logs/*", authMiddleware);
 app.route("/api/logs", logsRouter);
 app.use("/api/analysis/*", authMiddleware);
 app.route("/api/analysis", analysisRouter);
+app.route("/api/stream", streamRouter);
 
 app.route("/", openapiApp);
 
