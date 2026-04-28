@@ -1,6 +1,8 @@
-import { drizzle } from "drizzle-orm/d1";
-import { workerLogs, logs, metaInternalLogs } from "../db/schema";
 import type { ExecutionContext } from "@cloudflare/workers-types";
+
+import { drizzle } from "drizzle-orm/d1";
+
+import { workerLogs, logs, metaInternalLogs } from "../db/schema";
 
 export async function processTailEvents(events: any[], env: any, ctx: ExecutionContext) {
   if (!env.DB) {
@@ -31,7 +33,7 @@ export async function processTailEvents(events: any[], env: any, ctx: ExecutionC
 
       // Log per-event observability
       console.info(
-        `[Tail] Processing ${event.logs?.length || 0} logs from ${workerName}, outcome: ${event.outcome}`
+        `[Tail] Processing ${event.logs?.length || 0} logs from ${workerName}, outcome: ${event.outcome}`,
       );
 
       // RAW LOG PERSISTENCE: Store raw event in KV before processing
@@ -43,7 +45,7 @@ export async function processTailEvents(events: any[], env: any, ctx: ExecutionC
             expirationTtl: 86400 * 7, // 7 days retention
           }).catch((error: Error) => {
             console.error(`Error storing raw log to KV: ${error.message}`);
-          })
+          }),
         );
       }
 

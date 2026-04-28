@@ -1,6 +1,21 @@
-import * as React from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
-import { AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import * as React from "react";
+import {
+  AreaChart,
+  Area,
+  BarChart,
+  Bar,
+  PieChart,
+  Pie,
+  Cell,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+} from "recharts";
+
+import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 
 interface DashboardStats {
   overview: {
@@ -17,7 +32,7 @@ interface Props {
   loading: boolean;
 }
 
-const COLORS = ['#22c55e', '#ef4444', '#f59e0b', '#3b82f6', '#8b5cf6'];
+const COLORS = ["#22c55e", "#ef4444", "#f59e0b", "#3b82f6", "#8b5cf6"];
 
 export function StatsCharts({ stats, loading }: Props) {
   if (loading || !stats) {
@@ -25,22 +40,29 @@ export function StatsCharts({ stats, loading }: Props) {
   }
 
   // Prepare data for outcome pie chart
-  const outcomeData = stats.byOutcome.map(item => ({
+  const outcomeData = stats.byOutcome.map((item) => ({
     name: item.outcome,
     value: item.count,
   }));
 
   // Prepare data for worker bar chart
-  const workerData = Object.entries(stats.byWorker).map(([workerName, outcomes]) => {
-    const total = Object.values(outcomes).reduce((sum, count) => sum + count, 0);
-    const errors = (outcomes.exception || 0) + (outcomes.error || 0) + (outcomes.exceededCpu || 0) + (outcomes.exceededMemory || 0);
-    return {
-      name: workerName.length > 20 ? workerName.substring(0, 20) + '...' : workerName,
-      total,
-      errors,
-      ok: outcomes.ok || 0,
-    };
-  }).sort((a, b) => b.total - a.total).slice(0, 10); // Top 10 workers
+  const workerData = Object.entries(stats.byWorker)
+    .map(([workerName, outcomes]) => {
+      const total = Object.values(outcomes).reduce((sum, count) => sum + count, 0);
+      const errors =
+        (outcomes.exception || 0) +
+        (outcomes.error || 0) +
+        (outcomes.exceededCpu || 0) +
+        (outcomes.exceededMemory || 0);
+      return {
+        name: workerName.length > 20 ? workerName.substring(0, 20) + "..." : workerName,
+        total,
+        errors,
+        ok: outcomes.ok || 0,
+      };
+    })
+    .sort((a, b) => b.total - a.total)
+    .slice(0, 10); // Top 10 workers
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -100,15 +122,21 @@ export function StatsCharts({ stats, loading }: Props) {
         <CardContent>
           <div className="grid grid-cols-3 gap-4">
             <div className="text-center">
-              <div className="text-3xl font-bold text-blue-600">{stats.overview.totalLogs.toLocaleString()}</div>
+              <div className="text-3xl font-bold text-blue-600">
+                {stats.overview.totalLogs.toLocaleString()}
+              </div>
               <div className="text-sm text-gray-500">Total Logs</div>
             </div>
             <div className="text-center">
-              <div className="text-3xl font-bold text-red-600">{stats.overview.errorCount.toLocaleString()}</div>
+              <div className="text-3xl font-bold text-red-600">
+                {stats.overview.errorCount.toLocaleString()}
+              </div>
               <div className="text-sm text-gray-500">Error Count</div>
             </div>
             <div className="text-center">
-              <div className="text-3xl font-bold text-orange-600">{stats.overview.errorRate.toFixed(2)}%</div>
+              <div className="text-3xl font-bold text-orange-600">
+                {stats.overview.errorRate.toFixed(2)}%
+              </div>
               <div className="text-sm text-gray-500">Error Rate</div>
             </div>
           </div>

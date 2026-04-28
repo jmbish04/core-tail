@@ -1,10 +1,11 @@
-import * as React from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
-import { Button } from '../ui/button';
-import { Badge } from '../ui/badge';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../ui/table';
-import { AlertCircleIcon, CopyIcon, SparklesIcon } from 'lucide-react';
-import { ErrorAnalysisModal } from './ErrorAnalysisModal';
+import { AlertCircleIcon, CopyIcon, SparklesIcon } from "lucide-react";
+import * as React from "react";
+
+import { Badge } from "../ui/badge";
+import { Button } from "../ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../ui/table";
+import { ErrorAnalysisModal } from "./ErrorAnalysisModal";
 
 interface UniqueError {
   message: string;
@@ -29,13 +30,13 @@ export function WorkerDetail({ workerName }: Props) {
     if (!workerName) return;
 
     fetch(`/api/logs/worker/${workerName}/errors`)
-      .then(res => res.json())
-      .then(data => {
+      .then((res) => res.json())
+      .then((data) => {
         setErrors(data.errors || []);
         setLoading(false);
       })
-      .catch(err => {
-        console.error('Failed to load errors:', err);
+      .catch((err) => {
+        console.error("Failed to load errors:", err);
         setLoading(false);
       });
   }, [workerName]);
@@ -47,7 +48,7 @@ export function WorkerDetail({ workerName }: Props) {
 
   const copyErrorToClipboard = (error: UniqueError) => {
     navigator.clipboard.writeText(error.message).then(() => {
-      alert('Error message copied to clipboard!');
+      alert("Error message copied to clipboard!");
     });
   };
 
@@ -95,11 +96,13 @@ export function WorkerDetail({ workerName }: Props) {
                     <TableCell className="font-mono text-sm max-w-md truncate">
                       <div className="flex items-center gap-2">
                         <AlertCircleIcon className="w-4 h-4 text-red-500 flex-shrink-0" />
-                        <span className="truncate" title={error.message}>{error.message}</span>
+                        <span className="truncate" title={error.message}>
+                          {error.message}
+                        </span>
                       </div>
                     </TableCell>
                     <TableCell className="text-center">
-                      <Badge variant={error.count > 10 ? 'destructive' : 'secondary'}>
+                      <Badge variant={error.count > 10 ? "destructive" : "secondary"}>
                         {error.count}
                       </Badge>
                     </TableCell>
@@ -118,10 +121,7 @@ export function WorkerDetail({ workerName }: Props) {
                         >
                           <CopyIcon className="w-4 h-4" />
                         </Button>
-                        <Button
-                          size="sm"
-                          onClick={() => handleAnalyzeError(error)}
-                        >
+                        <Button size="sm" onClick={() => handleAnalyzeError(error)}>
                           <SparklesIcon className="w-4 h-4 mr-2" />
                           Analyze with AI
                         </Button>
@@ -137,7 +137,7 @@ export function WorkerDetail({ workerName }: Props) {
 
       {showAnalysisModal && selectedError && (
         <ErrorAnalysisModal
-          workerName={workerName || ''}
+          workerName={workerName || ""}
           error={selectedError}
           onClose={() => setShowAnalysisModal(false)}
         />

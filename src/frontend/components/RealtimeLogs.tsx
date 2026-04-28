@@ -1,10 +1,11 @@
-import * as React from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
-import { Button } from './ui/button';
-import { Input } from './ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
-import { Badge } from './ui/badge';
-import { CopyIcon, RefreshCwIcon } from 'lucide-react';
+import { CopyIcon, RefreshCwIcon } from "lucide-react";
+import * as React from "react";
+
+import { Badge } from "./ui/badge";
+import { Button } from "./ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
+import { Input } from "./ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
 
 interface LogEntry {
   id: number;
@@ -21,27 +22,27 @@ interface LogEntry {
 export function RealtimeLogs() {
   const [logs, setLogs] = React.useState<LogEntry[]>([]);
   const [workers, setWorkers] = React.useState<string[]>([]);
-  const [selectedWorker, setSelectedWorker] = React.useState<string>('all');
-  const [selectedLevel, setSelectedLevel] = React.useState<string>('all');
-  const [keyword, setKeyword] = React.useState<string>('');
+  const [selectedWorker, setSelectedWorker] = React.useState<string>("all");
+  const [selectedLevel, setSelectedLevel] = React.useState<string>("all");
+  const [keyword, setKeyword] = React.useState<string>("");
   const [isConnected, setIsConnected] = React.useState(false);
   const [ws, setWs] = React.useState<WebSocket | null>(null);
   const logsEndRef = React.useRef<HTMLDivElement>(null);
 
   // Load workers list
   React.useEffect(() => {
-    fetch('/api/logs/workers')
-      .then(res => res.json())
-      .then(data => setWorkers(data.workers || []))
-      .catch(err => console.error('Failed to load workers:', err));
+    fetch("/api/logs/workers")
+      .then((res) => res.json())
+      .then((data) => setWorkers(data.workers || []))
+      .catch((err) => console.error("Failed to load workers:", err));
   }, []);
 
   // Read filters from URL on mount
   React.useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    const workerParam = params.get('worker');
-    const levelParam = params.get('level');
-    const keywordParam = params.get('keyword');
+    const workerParam = params.get("worker");
+    const levelParam = params.get("level");
+    const keywordParam = params.get("keyword");
 
     if (workerParam) setSelectedWorker(workerParam);
     if (levelParam) setSelectedLevel(levelParam);
@@ -51,48 +52,48 @@ export function RealtimeLogs() {
   // Update URL when filters change
   React.useEffect(() => {
     const params = new URLSearchParams();
-    if (selectedWorker && selectedWorker !== 'all') params.set('worker', selectedWorker);
-    if (selectedLevel && selectedLevel !== 'all') params.set('level', selectedLevel);
-    if (keyword) params.set('keyword', keyword);
+    if (selectedWorker && selectedWorker !== "all") params.set("worker", selectedWorker);
+    if (selectedLevel && selectedLevel !== "all") params.set("level", selectedLevel);
+    if (keyword) params.set("keyword", keyword);
 
-    const newUrl = params.toString() ? `?${params.toString()}` : '/realtime';
-    window.history.replaceState({}, '', newUrl);
+    const newUrl = params.toString() ? `?${params.toString()}` : "/realtime";
+    window.history.replaceState({}, "", newUrl);
   }, [selectedWorker, selectedLevel, keyword]);
 
   // WebSocket connection
   React.useEffect(() => {
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
     const params = new URLSearchParams();
-    if (selectedWorker && selectedWorker !== 'all') params.set('workerName', selectedWorker);
-    if (selectedLevel && selectedLevel !== 'all') params.set('level', selectedLevel);
-    if (keyword) params.set('keyword', keyword);
+    if (selectedWorker && selectedWorker !== "all") params.set("workerName", selectedWorker);
+    if (selectedLevel && selectedLevel !== "all") params.set("level", selectedLevel);
+    if (keyword) params.set("keyword", keyword);
 
     const wsUrl = `${protocol}//${window.location.host}/api/stream/logs?${params.toString()}`;
     const websocket = new WebSocket(wsUrl);
 
     websocket.onopen = () => {
-      console.log('WebSocket connected');
+      console.log("WebSocket connected");
       setIsConnected(true);
     };
 
     websocket.onmessage = (event) => {
       try {
         const message = JSON.parse(event.data);
-        if (message.type === 'logs' && message.data) {
-          setLogs(prev => [...message.data, ...prev].slice(0, 500)); // Keep last 500 logs
+        if (message.type === "logs" && message.data) {
+          setLogs((prev) => [...message.data, ...prev].slice(0, 500)); // Keep last 500 logs
         }
       } catch (err) {
-        console.error('Failed to parse WebSocket message:', err);
+        console.error("Failed to parse WebSocket message:", err);
       }
     };
 
     websocket.onerror = (error) => {
-      console.error('WebSocket error:', error);
+      console.error("WebSocket error:", error);
       setIsConnected(false);
     };
 
     websocket.onclose = () => {
-      console.log('WebSocket disconnected');
+      console.log("WebSocket disconnected");
       setIsConnected(false);
     };
 
@@ -105,19 +106,24 @@ export function RealtimeLogs() {
 
   // Auto-scroll to bottom
   React.useEffect(() => {
-    logsEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    logsEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [logs]);
 
   const copyLogsToClipboard = () => {
-    const logsText = logs.map(log => {
-      return `[${log.eventTimestamp}] ${log.workerName} - ${log.outcome}\n${JSON.stringify(log.logs, null, 2)}`;
-    }).join('\n\n');
+    const logsText = logs
+      .map((log) => {
+        return `[${log.eventTimestamp}] ${log.workerName} - ${log.outcome}\n${JSON.stringify(log.logs, null, 2)}`;
+      })
+      .join("\n\n");
 
-    navigator.clipboard.writeText(logsText).then(() => {
-      alert('Logs copied to clipboard!');
-    }).catch(err => {
-      console.error('Failed to copy logs:', err);
-    });
+    navigator.clipboard
+      .writeText(logsText)
+      .then(() => {
+        alert("Logs copied to clipboard!");
+      })
+      .catch((err) => {
+        console.error("Failed to copy logs:", err);
+      });
   };
 
   const clearLogs = () => {
@@ -125,15 +131,15 @@ export function RealtimeLogs() {
   };
 
   const getOutcomeBadge = (outcome: string) => {
-    const variants: Record<string, 'default' | 'destructive' | 'secondary'> = {
-      ok: 'default',
-      exception: 'destructive',
-      error: 'destructive',
-      canceled: 'secondary',
-      exceededCpu: 'destructive',
-      exceededMemory: 'destructive',
+    const variants: Record<string, "default" | "destructive" | "secondary"> = {
+      ok: "default",
+      exception: "destructive",
+      error: "destructive",
+      canceled: "secondary",
+      exceededCpu: "destructive",
+      exceededMemory: "destructive",
     };
-    return <Badge variant={variants[outcome] || 'secondary'}>{outcome}</Badge>;
+    return <Badge variant={variants[outcome] || "secondary"}>{outcome}</Badge>;
   };
 
   return (
@@ -143,8 +149,8 @@ export function RealtimeLogs() {
           <CardTitle className="flex items-center justify-between">
             <span>Real-time Logs</span>
             <div className="flex items-center gap-2">
-              <Badge variant={isConnected ? 'default' : 'destructive'}>
-                {isConnected ? 'Connected' : 'Disconnected'}
+              <Badge variant={isConnected ? "default" : "destructive"}>
+                {isConnected ? "Connected" : "Disconnected"}
               </Badge>
               <span className="text-sm text-muted-foreground">{logs.length} logs</span>
             </div>
@@ -158,8 +164,10 @@ export function RealtimeLogs() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Workers</SelectItem>
-                {workers.map(worker => (
-                  <SelectItem key={worker} value={worker}>{worker}</SelectItem>
+                {workers.map((worker) => (
+                  <SelectItem key={worker} value={worker}>
+                    {worker}
+                  </SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -202,7 +210,9 @@ export function RealtimeLogs() {
               logs.map((log, idx) => (
                 <div key={`${log.id}-${idx}`} className="mb-2 border-b border-gray-800 pb-2">
                   <div className="flex items-center gap-2 mb-1">
-                    <span className="text-gray-500">{new Date(log.eventTimestamp).toLocaleTimeString()}</span>
+                    <span className="text-gray-500">
+                      {new Date(log.eventTimestamp).toLocaleTimeString()}
+                    </span>
                     <span className="text-blue-400">{log.workerName}</span>
                     {getOutcomeBadge(log.outcome)}
                     {log.requestMethod && (
@@ -210,10 +220,14 @@ export function RealtimeLogs() {
                     )}
                   </div>
                   {log.logs && (
-                    <pre className="text-xs whitespace-pre-wrap">{JSON.stringify(log.logs, null, 2)}</pre>
+                    <pre className="text-xs whitespace-pre-wrap">
+                      {JSON.stringify(log.logs, null, 2)}
+                    </pre>
                   )}
                   {log.exceptions && (
-                    <pre className="text-red-400 text-xs whitespace-pre-wrap">{JSON.stringify(log.exceptions, null, 2)}</pre>
+                    <pre className="text-red-400 text-xs whitespace-pre-wrap">
+                      {JSON.stringify(log.exceptions, null, 2)}
+                    </pre>
                   )}
                 </div>
               ))

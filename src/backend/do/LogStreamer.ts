@@ -30,7 +30,7 @@ export class LogStreamer extends DurableObject {
         {
           status: 200,
           headers: { "Content-Type": "application/json" },
-        }
+        },
       );
     }
 
@@ -91,7 +91,7 @@ export class LogStreamer extends DurableObject {
           JSON.stringify({
             type: "subscription_updated",
             filters: data.filters,
-          })
+          }),
         );
       }
     } catch (e) {

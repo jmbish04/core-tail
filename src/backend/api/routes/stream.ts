@@ -3,6 +3,7 @@
  */
 
 import { Hono } from "hono";
+
 import type { Bindings } from "../index";
 
 const streamRouter = new Hono<{ Bindings: Bindings }>();
