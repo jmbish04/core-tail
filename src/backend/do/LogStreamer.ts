@@ -38,13 +38,16 @@ export class LogStreamer extends DurableObject {
       );
     }
 
-    // WebSocket Upgrade endpoint
-    if (url.pathname === "/ws") {
-      const upgradeHeader = request.headers.get("Upgrade");
-      if (upgradeHeader !== "websocket") {
-        return new Response("Expected Upgrade: websocket", { status: 426 });
-      }
+    // Ingest logs from the Tail Handler
+    if (request.method === "POST" && url.pathname === "/ingest") {
+      const logData = await request.text();
+      this.broadcast(logData);
+      return new Response("OK");
+    }
 
+    // WebSocket Upgrade endpoint - accept any path with Upgrade: websocket header
+    const upgradeHeader = request.headers.get("Upgrade");
+    if (upgradeHeader === "websocket") {
       const pair = new WebSocketPair();
       const [client, server] = Object.values(pair);
 
@@ -62,13 +65,6 @@ export class LogStreamer extends DurableObject {
         status: 101,
         webSocket: client,
       });
-    }
-
-    // Ingest logs from the Tail Handler
-    if (request.method === "POST" && url.pathname === "/ingest") {
-      const logData = await request.text();
-      this.broadcast(logData);
-      return new Response("OK");
     }
 
     return new Response("Not Found", { status: 404 });
