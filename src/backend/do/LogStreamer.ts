@@ -47,7 +47,7 @@ export class LogStreamer extends DurableObject {
 
     // WebSocket Upgrade endpoint - accept any path with Upgrade: websocket header
     const upgradeHeader = request.headers.get("Upgrade");
-    if (upgradeHeader === "websocket") {
+    if (upgradeHeader?.toLowerCase() === "websocket") {
       const pair = new WebSocketPair();
       const [client, server] = Object.values(pair);
 
