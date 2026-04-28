@@ -172,3 +172,15 @@ export const workerLogs = sqliteTable("worker_logs", {
   requestUrl: text("request_url"),
   requestMethod: text("request_method"),
 });
+
+/**
+ * Meta Internal Logs table for tail worker observability
+ */
+export const metaInternalLogs = sqliteTable("meta_internal_logs", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  event: text("event").notNull(),
+  details: text("details"),
+  timestamp: integer("timestamp", { mode: "timestamp" })
+    .notNull()
+    .default(sql`(unixepoch())`),
+});

@@ -30,6 +30,7 @@ export type Bindings = {
   WEBHOOK_SECRET?: string;
   GEMINI_API_KEY?: string;
   LOG_ANALYZER_AGENT: any; // DurableObjectNamespace
+  LOG_STREAMER: any; // DurableObjectNamespace for WebSocket broadcasting
   ASSETS: any;
 };
 

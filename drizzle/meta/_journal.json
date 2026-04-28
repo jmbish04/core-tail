@@ -29,6 +29,13 @@
       "when": 1777337313067,
       "tag": "0003_worthless_hairball",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1777358229809,
+      "tag": "0004_material_black_widow",
+      "breakpoints": true
     }
   ]
 }
