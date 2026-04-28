@@ -24,7 +24,7 @@ export function LogsTable({ workerName, outcomeFilter }: LogsTableProps) {
   const [selectedLog, setSelectedLog] = React.useState<LogEntry | null>(null);
   const [showModal, setShowModal] = React.useState(false);
   const pageSize = 50;
-  const [currentPage, setCurrentPage] = React.useState(0);
+  const currentPage = 0; // Pagination not yet implemented
 
   React.useEffect(() => {
     loadLogs();

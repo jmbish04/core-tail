@@ -1,7 +1,5 @@
 import * as React from "react";
 import {
-  AreaChart,
-  Area,
   BarChart,
   Bar,
   PieChart,

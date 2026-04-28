@@ -114,7 +114,7 @@ export class LogStreamer extends DurableObject {
   /**
    * Handle WebSocket close events
    */
-  async webSocketClose(ws: WebSocket, code: number, reason: string, wasClean: boolean) {
+  async webSocketClose(ws: WebSocket, code: number, reason: string, _wasClean: boolean) {
     // Hibernation API handles cleanup automatically
     ws.close(code, reason);
   }

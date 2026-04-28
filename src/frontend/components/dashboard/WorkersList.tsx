@@ -1,13 +1,5 @@
 import * as React from "react";
 
-import { Card } from "../ui/card";
-
-interface Worker {
-  name: string;
-  total: number;
-  errors: number;
-}
-
 interface WorkersListProps {
   stats: any;
 }
