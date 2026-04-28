@@ -241,4 +241,58 @@ logsRouter.get("/legacy/metrics", async (c) => {
   return c.json(results, 200);
 });
 
+/**
+ * GET /api/logs/worker/:workerName/errors
+ * Get unique errors for a specific worker with occurrence counts
+ */
+logsRouter.get("/worker/:workerName/errors", async (c) => {
+  const { workerName } = c.req.param();
+  const db = drizzle(c.env.DB);
+
+  // Get all error logs for this worker
+  const errorLogs = await db
+    .select()
+    .from(logs)
+    .where(and(eq(logs.workerName, workerName), eq(logs.level, "error")))
+    .orderBy(desc(logs.timestamp))
+    .limit(1000); // Get last 1000 errors for analysis
+
+  // Group errors by message to find unique errors
+  const errorGroups = new Map<string, { message: string; count: number; firstSeen: Date; lastSeen: Date; exampleId: number; metadata: any }>();
+
+  for (const log of errorLogs) {
+    // Normalize error message (remove dynamic parts like timestamps, IDs, etc.)
+    const normalizedMessage = log.message
+      .replace(/\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/g, '[TIMESTAMP]')
+      .replace(/\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b/gi, '[UUID]')
+      .replace(/\d+/g, '[NUMBER]');
+
+    const existing = errorGroups.get(normalizedMessage);
+    if (existing) {
+      existing.count++;
+      existing.lastSeen = log.timestamp > existing.lastSeen ? log.timestamp : existing.lastSeen;
+    } else {
+      errorGroups.set(normalizedMessage, {
+        message: log.message,
+        count: 1,
+        firstSeen: log.timestamp,
+        lastSeen: log.timestamp,
+        exampleId: log.id,
+        metadata: log.metadata ? JSON.parse(log.metadata) : null,
+      });
+    }
+  }
+
+  // Convert to array and sort by count
+  const uniqueErrors = Array.from(errorGroups.values())
+    .sort((a, b) => b.count - a.count)
+    .map(error => ({
+      ...error,
+      firstSeen: error.firstSeen.toISOString(),
+      lastSeen: error.lastSeen.toISOString(),
+    }));
+
+  return c.json({ errors: uniqueErrors }, 200);
+});
+
 export { logsRouter };

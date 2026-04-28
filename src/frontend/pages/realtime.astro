@@ -1,0 +1,19 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+---
+
+<BaseLayout title="Real-time Logs | Core Tail">
+  <div id="realtime-logs-root"></div>
+</BaseLayout>
+
+<script>
+  import { RealtimeLogs } from '../components/RealtimeLogs';
+  import { createRoot } from 'react-dom/client';
+  import * as React from 'react';
+
+  const container = document.getElementById('realtime-logs-root');
+  if (container) {
+    const root = createRoot(container);
+    root.render(React.createElement(RealtimeLogs));
+  }
+</script>

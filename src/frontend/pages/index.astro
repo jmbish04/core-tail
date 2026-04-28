@@ -1,5 +1,5 @@
 ---
-import { ComponentExample } from "@/components/ComponentExample";
+import { Dashboard } from "@/components/dashboard/Dashboard";
 import BaseLayout from "@/layouts/BaseLayout.astro";
 import { siteConfig } from "@/lib/config";
 ---
@@ -8,5 +8,5 @@ import { siteConfig } from "@/lib/config";
   title={siteConfig.name}
   description={siteConfig.description}
 >
-  <ComponentExample client:load />
+  <Dashboard client:load />
 </BaseLayout>

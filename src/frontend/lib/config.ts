@@ -17,19 +17,20 @@ export type SiteConfig = {
 };
 
 export const siteConfig: SiteConfig = {
-  name: "Astro shadcn/ui template",
-  description: "The template helps you build apps with Astro, Tailwind CSS, and shadcn/ui.",
-  url: "https://astro-shadcn-ui-template.vercel.app",
+  name: "Core Tail",
+  description: "Cloudflare Workers tail event aggregator with AI-powered log analysis",
+  url: "https://core-tail.jmbish04.workers.dev",
   author: {
-    name: "AREA44",
-    url: "https://github.com/area44",
+    name: "jmbish04",
+    url: "https://github.com/jmbish04",
   },
   links: {
-    github: "https://github.com/area44/astro-shadcn-ui-template",
+    github: "https://github.com/jmbish04/core-tail",
   },
   navItems: [
-    { href: "https://astro.build", label: "Astro", external: true },
-    { href: "https://tailwindcss.com", label: "Tailwind CSS", external: true },
-    { href: "https://ui.shadcn.com", label: "shadcn/ui", external: true },
+    { href: "/", label: "Dashboard" },
+    { href: "/logs", label: "Logs" },
+    { href: "/realtime", label: "Real-time" },
+    { href: "https://github.com/jmbish04/core-tail", label: "GitHub", external: true },
   ],
 };

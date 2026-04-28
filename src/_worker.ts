@@ -37,3 +37,4 @@ const handler: ExportedHandler<Bindings> = {
 export default handler;
 
 export { LogAnalyzerAgent } from "./backend/agent";
+export { LogStreamer } from "./backend/do/LogStreamer";
