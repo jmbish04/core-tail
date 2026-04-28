@@ -29,8 +29,11 @@ export function RealtimeLogs() {
   const [isConnected, setIsConnected] = React.useState(false);
   const [connectionError, setConnectionError] = React.useState<string>("");
   const [isReconnecting, setIsReconnecting] = React.useState(false);
+  const [isPolling, setIsPolling] = React.useState(false);
   const [ws, setWs] = React.useState<WebSocket | null>(null);
+  const [lastSyncTimestamp, setLastSyncTimestamp] = React.useState<string | null>(null);
   const logsEndRef = React.useRef<HTMLDivElement>(null);
+  const pollingIntervalRef = React.useRef<NodeJS.Timeout | null>(null);
   const { addToast } = useToast();
 
   // Load workers list
@@ -64,8 +67,69 @@ export function RealtimeLogs() {
     window.history.replaceState({}, "", newUrl);
   }, [selectedWorker, selectedLevel, keyword]);
 
+  // Fetch logs from sync API (polling fallback)
+  const fetchLogsSync = React.useCallback(async () => {
+    try {
+      const params = new URLSearchParams();
+      params.set("limit", "100");
+      if (lastSyncTimestamp) {
+        params.set("since", lastSyncTimestamp);
+      }
+
+      const response = await fetch(`/api/logs/sync?${params.toString()}`);
+      const data = await response.json();
+
+      if (data.logs && data.logs.length > 0) {
+        setLogs((prev) => {
+          // Merge new logs with existing, remove duplicates by id
+          const existingIds = new Set(prev.map(l => l.id));
+          const newLogs = data.logs.filter((log: LogEntry) => !existingIds.has(log.id));
+          return [...newLogs, ...prev].slice(0, 500);
+        });
+        setLastSyncTimestamp(data.timestamp);
+      }
+    } catch (error) {
+      console.error("Error fetching logs from sync API:", error);
+    }
+  }, [lastSyncTimestamp]);
+
+  // Start polling fallback
+  const startPolling = React.useCallback(() => {
+    if (pollingIntervalRef.current) {
+      clearInterval(pollingIntervalRef.current);
+    }
+
+    setIsPolling(true);
+    addToast({
+      title: "Polling Mode Active",
+      description: "Using fallback polling (updates every 5 seconds)",
+      variant: "info",
+      duration: 3000,
+    });
+
+    // Initial fetch
+    fetchLogsSync();
+
+    // Poll every 5 seconds
+    pollingIntervalRef.current = setInterval(() => {
+      fetchLogsSync();
+    }, 5000);
+  }, [fetchLogsSync, addToast]);
+
+  // Stop polling fallback
+  const stopPolling = React.useCallback(() => {
+    if (pollingIntervalRef.current) {
+      clearInterval(pollingIntervalRef.current);
+      pollingIntervalRef.current = null;
+    }
+    setIsPolling(false);
+  }, []);
+
   // WebSocket connection
   const connectWebSocket = React.useCallback(() => {
+    // Stop polling if active
+    stopPolling();
+
     // Close existing connection
     if (ws) {
       ws.close();
@@ -85,6 +149,7 @@ export function RealtimeLogs() {
       setIsConnected(true);
       setConnectionError("");
       setIsReconnecting(false);
+      stopPolling(); // Ensure polling is stopped when WS connects
       addToast({
         title: "Connected",
         description: "Real-time log streaming is active",
@@ -117,10 +182,16 @@ export function RealtimeLogs() {
       setConnectionError(reason);
       setIsConnected(false);
       setIsReconnecting(false);
+
+      // Start polling fallback when WebSocket disconnects
+      if (!isPolling) {
+        console.log("WebSocket closed, starting polling fallback");
+        startPolling();
+      }
     };
 
     setWs(websocket);
-  }, [selectedWorker, selectedLevel, keyword, ws, addToast]);
+  }, [selectedWorker, selectedLevel, keyword, ws, addToast, stopPolling, startPolling, isPolling]);
 
   React.useEffect(() => {
     connectWebSocket();
@@ -129,6 +200,7 @@ export function RealtimeLogs() {
       if (ws) {
         ws.close();
       }
+      stopPolling(); // Clean up polling on unmount
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedWorker, selectedLevel, keyword]);
@@ -240,11 +312,16 @@ ${connectionError || "WebSocket failed to connect"}
           <CardTitle className="flex items-center justify-between">
             <span>Real-time Logs</span>
             <div className="flex items-center gap-2">
-              <Badge variant={isConnected ? "default" : "destructive"}>
+              <Badge variant={isConnected ? "default" : isPolling ? "secondary" : "destructive"}>
                 {isConnected ? (
                   <>
                     <WifiIcon className="w-3 h-3 mr-1" />
                     Connected
+                  </>
+                ) : isPolling ? (
+                  <>
+                    <RefreshCwIcon className="w-3 h-3 mr-1 animate-spin" />
+                    Polling Mode
                   </>
                 ) : (
                   <>

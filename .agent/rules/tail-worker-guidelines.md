@@ -25,3 +25,18 @@ INSTRUCTION: Review the existing `.agent/rules/` directory first, and then merge
     - Durable Object reachability and WebSocket connectivity
     - Overall system status aggregation
 16. **Error Handling**: All async operations should include proper error handling and logging. Errors should not cause the entire batch to fail; instead, log the error and continue processing remaining events.
+
+## WebSocket Resiliency & Fallbacks
+
+17. **Mandatory Polling Fallback**: Any frontend interface relying on Cloudflare Durable Object WebSockets for real-time data must implement a degraded polling fallback. If the WebSocket connection closes (e.g., due to hibernation timeout, network drop, or strict proxy firewalls), the client must automatically initiate a REST polling loop against a synchronous fallback API (e.g., D1 database fetch) while attempting exponential backoff reconnections.
+18. **Log Mirroring**: Workers acting as telemetry or tail processors must mirror their own internal logs. These logs should be written to D1 and simultaneously dispatched to the WebSocket broadcasting DO to ensure the frontend reflects both historical and real-time states accurately.
+19. **Sync Fallback Endpoint**: Provide a synchronous REST API endpoint (e.g., `GET /api/logs/sync`) that returns recent log entries from persistent storage (D1 database). This endpoint should support:
+    - `limit` parameter to control the number of entries returned
+    - `since` parameter for incremental synchronization (ISO timestamp)
+    - Structured response with logs array, timestamp, and count
+20. **Automatic Degradation**: Frontend WebSocket clients should automatically detect connection failures (`onclose`, `onerror` events) and immediately fall back to polling mode without user intervention. The polling interval should be reasonable (3-5 seconds) to balance freshness with resource usage.
+21. **Visual Indicators**: The UI must clearly indicate the connection state:
+    - Connected: Real-time WebSocket streaming active
+    - Polling Mode: Fallback polling with refresh interval
+    - Disconnected: No connectivity, manual refresh required
+22. **State Persistence**: During WebSocket-to-polling transitions, maintain log state continuity by tracking the last synchronized timestamp to avoid duplicate entries when reconnecting.
