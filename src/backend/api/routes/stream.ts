@@ -15,7 +15,7 @@ const streamRouter = new Hono<{ Bindings: Bindings }>();
  */
 streamRouter.get("/logs", async (c) => {
   const upgradeHeader = c.req.header("Upgrade");
-  if (!upgradeHeader || upgradeHeader !== "websocket") {
+  if (!upgradeHeader || upgradeHeader.toLowerCase() !== "websocket") {
     return c.text("Expected Upgrade: websocket", 426);
   }
 
