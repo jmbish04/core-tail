@@ -5,12 +5,12 @@
  */
 import type { ExportedHandler, ExecutionContext } from "@cloudflare/workers-types";
 
-import type { Bindings } from "./backend/api/index";
+// import type { Bindings } from "./backend/api/index";
 
 import { app as honoApp } from "./backend/api/index";
 import { processTailEvents } from "./backend/services/tailHandler";
 
-const handler: ExportedHandler<Bindings> = {
+const handler: ExportedHandler<Env> = {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
 
@@ -29,7 +29,7 @@ const handler: ExportedHandler<Bindings> = {
     return env.ASSETS.fetch(request);
   },
 
-  async tail(events: any, env: any, ctx: ExecutionContext) {
+async tail(events: TraceItem[], env: Env, ctx: ExecutionContext) {
     await processTailEvents(events, env, ctx);
   },
 };
