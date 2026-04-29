@@ -31,7 +31,7 @@ const ErrorResponseSchema = z.object({
 // GET /api/logs - Get filtered worker logs
 const getLogsRoute = createRoute({
   method: "get",
-  path: "/",
+  path: "",
   tags: ["Logs"],
   operationId: "getLogs",
   summary: "Get filtered worker logs",
