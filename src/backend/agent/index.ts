@@ -23,6 +23,7 @@ import { fetchWorkerScript } from "@/backend/agent/methods/cloudflare/workers/sc
 import { fetchWorkerLogs, fetchWorkerErrors } from "@/backend/agent/methods/cloudflare/workers/logs";
 import { buildDocsContext } from "@/backend/agent/methods/cloudflare/docs";
 import { WorkersAI } from "@/backend/workersai";
+import { LogParserAgent, DocsResearcherAgent, ScriptAnalyzerAgent } from "./subagents";
 
 export class LogAnalyzerAgent extends Agent<Env, AgentState> {
   initialState: AgentState = {
@@ -35,12 +36,23 @@ export class LogAnalyzerAgent extends Agent<Env, AgentState> {
   async onRequest(request: Request): Promise<Response> {
     const url = new URL(request.url);
 
+    // ── WebSocket Upgrade ─────────────────────────────────────────
+    const upgradeHeader = request.headers.get("Upgrade");
+    if (upgradeHeader?.toLowerCase() === "websocket") {
+      const pair = new WebSocketPair();
+      const [client, server] = Object.values(pair);
+      this.ctx.acceptWebSocket(server);
+      return new Response(null, { status: 101, webSocket: client });
+    }
+
     // ── Health check ──────────────────────────────────────────────
     if (url.pathname === "/health") {
+      const sockets = this.ctx.getWebSockets();
       const health = await checkAgentHealth(this.env);
       return Response.json({
         agent: "LogAnalyzerAgent",
         state: this.state,
+        activeConnections: sockets.length,
         ...health,
       });
     }
@@ -52,6 +64,27 @@ export class LogAnalyzerAgent extends Agent<Env, AgentState> {
 
     // ── Default: return current state ─────────────────────────────
     return Response.json({ state: this.state });
+  }
+
+  private broadcastToClients(agent: string, status: string, message?: string) {
+    const payload = JSON.stringify({
+      type: "progress",
+      agent,
+      status,
+      message,
+      timestamp: new Date().toISOString()
+    });
+    
+    const sockets = this.ctx.getWebSockets();
+    for (const ws of sockets) {
+      if (ws.readyState === WebSocket.OPEN) {
+        try {
+          ws.send(payload);
+        } catch (e) {
+          console.error("[LogAnalyzerAgent] WebSocket send error:", e);
+        }
+      }
+    }
   }
 
   /**
@@ -115,8 +148,10 @@ export class LogAnalyzerAgent extends Agent<Env, AgentState> {
         relevantDocs: docsResult.docs,
       };
 
-      // ── Phase 2: AI analysis ──────────────────────────────────
+      // ── Phase 2: AI analysis (Orchestrator & Sub-agents) ──────
+      this.broadcastToClients("orchestrator", "started", "Gathered raw context. Spawning AI sub-agents...");
       const analysisText = await this.runAIAnalysis(context, docsResult.contextString);
+      this.broadcastToClients("orchestrator", "completed", "Final synthesis complete.");
 
       // ── Phase 3: Persist to D1 ────────────────────────────────
       if (data.errorHash) {
@@ -181,14 +216,34 @@ export class LogAnalyzerAgent extends Agent<Env, AgentState> {
     context: AnalysisContext,
     docsContextString: string,
   ): Promise<string> {
-    const recentLogsFormatted = context.recentLogs.length
-      ? context.recentLogs
-          .slice(0, 20)
-          .map((l) => `[${l.level}] ${l.timestamp}: ${l.message}`)
-          .join("\n")
-      : "No recent error logs available.";
+    if (!this.env.AI) {
+      return `[Simulated Analysis] AI binding unavailable.\n\nError in ${context.workerName}: ${context.errorMessage}\n\nSource code retrieved: ${context.sourceCode.length} chars\nRecent errors: ${context.recentLogs.length}\nDocs references: ${context.relevantDocs.length}`;
+    }
 
-    const promptText = `You are an expert Cloudflare Workers debugger. Analyze the following error and produce a detailed fix.
+    const logParser = await this.subAgent(LogParserAgent, "log-parser");
+    const docsResearcher = await this.subAgent(DocsResearcherAgent, "docs-researcher");
+    const scriptAnalyzer = await this.subAgent(ScriptAnalyzerAgent, "script-analyzer");
+
+    this.broadcastToClients("orchestrator", "progress", "Sub-agents spawned. Analyzing context in parallel...");
+
+    const [logAnalysis, docsAnalysis, scriptAnalysis] = await Promise.all([
+      logParser.analyzeLogs(context.recentLogs, context.errorMessage).then(res => {
+        this.broadcastToClients("log-parser", "completed", "Log trace analysis complete.");
+        return res;
+      }),
+      docsResearcher.summarizeDocs(context.errorMessage, docsContextString).then(res => {
+        this.broadcastToClients("docs-researcher", "completed", "Cloudflare documentation summarized.");
+        return res;
+      }),
+      scriptAnalyzer.analyzeScript(context.sourceCode, context.errorMessage).then(res => {
+        this.broadcastToClients("script-analyzer", "completed", "Worker script architecture analysis complete.");
+        return res;
+      })
+    ]);
+
+    this.broadcastToClients("orchestrator", "progress", "Synthesizing final fix from sub-agent reports...");
+
+    const promptText = `You are an expert Cloudflare Workers debugger. Analyze the following error and produce a detailed fix based on the specialized sub-agent reports.
 
 ## Worker
 Name: ${context.workerName}
@@ -196,26 +251,27 @@ Name: ${context.workerName}
 ## Error
 ${context.errorMessage}
 
-## Metadata
-${context.metadata || "None"}
+## Sub-agent Report: Log Traces (Qwen)
+${logAnalysis}
 
-## Recent Error Logs
-${recentLogsFormatted}
+## Sub-agent Report: Documentation (Llama 3.3)
+${docsAnalysis}
+
+## Sub-agent Report: Script Architecture (Kimi K2.6)
+${scriptAnalysis}
 
 ## Source Code
 \`\`\`typescript
 ${context.sourceCode}
 \`\`\`
 
-## Relevant Cloudflare Documentation
-${docsContextString}
-
 ## Instructions
-1. Identify the root cause of the error.
-2. Explain why this error occurs in the Cloudflare Workers runtime.
-3. Reference specific Cloudflare documentation where applicable.
-4. Provide a ready-to-copy prompt that a coding agent can use to fix the issue.
-5. In your fix prompt, output the FULL end-to-end corrected code for every file. No shortcuts, no "// rest of code" placeholders.
+1. Review the specialized insights provided by the sub-agents.
+2. Identify the root cause of the error.
+3. Explain why this error occurs in the Cloudflare Workers runtime.
+4. Reference specific Cloudflare documentation where applicable.
+5. Provide a ready-to-copy prompt that a coding agent can use to fix the issue.
+6. In your fix prompt, output the FULL end-to-end corrected code for every file. No shortcuts, no "// rest of code" placeholders.
 
 Format your response as:
 
@@ -227,10 +283,6 @@ Format your response as:
 
 ### Fix Prompt
 [complete prompt for a coding agent including full corrected code]`;
-
-    if (!this.env.AI) {
-      return `[Simulated Analysis] AI binding unavailable.\n\nError in ${context.workerName}: ${context.errorMessage}\n\nSource code retrieved: ${context.sourceCode.length} chars\nRecent errors: ${context.recentLogs.length}\nDocs references: ${context.relevantDocs.length}`;
-    }
 
     const ai = new WorkersAI(this.env);
     return await ai.generateText("@cf/openai/gpt-oss-120b", { prompt: promptText, max_tokens: 4096 });

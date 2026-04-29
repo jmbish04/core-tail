@@ -47,3 +47,4 @@ export default handler;
 // Explicitly export Durable Objects required by Cloudflare
 export { LogAnalyzerAgent } from "./backend/agent";
 export { LogStreamer } from "./backend/do/LogStreamer";
+export { LogParserAgent, DocsResearcherAgent, ScriptAnalyzerAgent } from "./backend/agent/subagents";
