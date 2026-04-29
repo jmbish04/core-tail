@@ -8,6 +8,13 @@
       "when": 1777406532934,
       "tag": "0000_legal_nico_minoru",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1777425785557,
+      "tag": "0001_glossy_random",
+      "breakpoints": true
     }
   ]
 }

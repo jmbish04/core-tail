@@ -7,3 +7,4 @@ export * from "./schema/notifications";
 export * from "./schema/documents";
 export * from "./schema/workerLogs";
 export * from "./schema/metaInternalLogs";
+export * from "./schema/errorAnalyses";
