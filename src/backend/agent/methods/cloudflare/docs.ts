@@ -202,7 +202,6 @@ Example: ["D1 database bindings", "Workers AI limitations"]
         // Pass up to 100,000 chars per docs page to preserve full context.
         gatheredContext.push(`### Source: ${page.url}\n\n${page.markdown.slice(0, 100000)}`);
         addedUsefulContext = true;
-      }
     }
 
     if (!addedUsefulContext) {

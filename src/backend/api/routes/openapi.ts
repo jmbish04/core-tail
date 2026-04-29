@@ -200,7 +200,7 @@ app.get(
     spec: {
       url: "/openapi.json",
     },
-    theme: "default",
+    theme: "solarized",
   } as any),
 );
 

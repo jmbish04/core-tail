@@ -220,22 +220,22 @@ export class LogAnalyzerAgent extends Agent<Env, AgentState> {
       return `[Simulated Analysis] AI binding unavailable.\n\nError in ${context.workerName}: ${context.errorMessage}\n\nSource code retrieved: ${context.sourceCode.length} chars\nRecent errors: ${context.recentLogs.length}\nDocs references: ${context.relevantDocs.length}`;
     }
 
-    const logParser = await this.subAgent(LogParserAgent, "log-parser");
-    const docsResearcher = await this.subAgent(DocsResearcherAgent, "docs-researcher");
-    const scriptAnalyzer = await this.subAgent(ScriptAnalyzerAgent, "script-analyzer");
+    const logParser = await (this as any).subAgent(LogParserAgent, "log-parser");
+    const docsResearcher = await (this as any).subAgent(DocsResearcherAgent, "docs-researcher");
+    const scriptAnalyzer = await (this as any).subAgent(ScriptAnalyzerAgent, "script-analyzer");
 
     this.broadcastToClients("orchestrator", "progress", "Sub-agents spawned. Analyzing context in parallel...");
 
     const [logAnalysis, docsAnalysis, scriptAnalysis] = await Promise.all([
-      logParser.analyzeLogs(context.recentLogs, context.errorMessage).then(res => {
+      logParser.analyzeLogs(context.recentLogs, context.errorMessage).then((res: string) => {
         this.broadcastToClients("log-parser", "completed", "Log trace analysis complete.");
         return res;
       }),
-      docsResearcher.summarizeDocs(context.errorMessage, docsContextString).then(res => {
+      docsResearcher.summarizeDocs(context.errorMessage, docsContextString).then((res: string) => {
         this.broadcastToClients("docs-researcher", "completed", "Cloudflare documentation summarized.");
         return res;
       }),
-      scriptAnalyzer.analyzeScript(context.sourceCode, context.errorMessage).then(res => {
+      scriptAnalyzer.analyzeScript(context.sourceCode, context.errorMessage).then((res: string) => {
         this.broadcastToClients("script-analyzer", "completed", "Worker script architecture analysis complete.");
         return res;
       })
