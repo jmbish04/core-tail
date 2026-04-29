@@ -41,7 +41,7 @@ export function RealtimeLogs() {
 
   // Load workers list
   React.useEffect(() => {
-    fetch("/api/logs/workers")
+    apiFetch("/api/logs/workers")
       .then((res) => res.json())
       .then((data: any) => setWorkers(data.workers || []))
       .catch((err) => console.error("Failed to load workers:", err));
