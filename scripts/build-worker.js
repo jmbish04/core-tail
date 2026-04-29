@@ -4,7 +4,7 @@ const path = require("path");
 console.log("[build-worker.js] Using src/index.ts as the unified Wrapper Worker.");
 
 // Ensure wrangler.jsonc points to src/index.ts so Wrangler bundles everything
-const wranglerPath = path.join(__dirname, "wrangler.jsonc");
+const wranglerPath = path.join(__dirname, "..", "wrangler.jsonc");
 if (fs.existsSync(wranglerPath)) {
   let wranglerContent = fs.readFileSync(wranglerPath, "utf8");
   const mainRegex = /"main":\s*"[^"]+"/;

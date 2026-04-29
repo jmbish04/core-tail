@@ -2,7 +2,11 @@ packages:
   - "."
 
 allowBuilds:
+  bufferutil: true
+  core-js-pure: true
   esbuild: true
+  keccak: true
   msw: true
   sharp: true
+  utf-8-validate: true
   workerd: true

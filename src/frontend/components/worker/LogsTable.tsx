@@ -1,4 +1,6 @@
 import * as React from "react";
+import { logger } from "@/lib/logger";
+import { apiFetch } from "@/lib/api";
 
 import { Card } from "../ui/card";
 
@@ -43,11 +45,14 @@ export function LogsTable({ workerName, outcomeFilter }: LogsTableProps) {
 
     try {
       setLoading(true);
-      const res = await fetch(`/api/logs?${params}`);
-      const data = await res.json();
-      setLogs(data.logs);
-    } catch (error) {
-      console.error("Error loading logs:", error);
+      const { data } = await apiFetch(`/api/logs?${params}`);
+      setLogs(data.logs || []);
+    } catch (error: any) {
+      logger.error(
+        "Failed to Load Logs",
+        error,
+        `## API Error - Logs Table\n\nFailed to load logs.\n\nError: ${error.message}`
+      );
     } finally {
       setLoading(false);
     }
@@ -55,12 +60,15 @@ export function LogsTable({ workerName, outcomeFilter }: LogsTableProps) {
 
   async function showLogDetails(logId: number) {
     try {
-      const res = await fetch(`/api/logs/${logId}`);
-      const data = await res.json();
+      const { data } = await apiFetch(`/api/logs/${logId}`);
       setSelectedLog(data.log);
       setShowModal(true);
-    } catch (error) {
-      console.error("Error loading log details:", error);
+    } catch (error: any) {
+      logger.error(
+        "Failed to Load Log Details",
+        error,
+        `## API Error - Logs Table\n\nFailed to load log details for log ID ${logId}.\n\nError: ${error.message}`
+      );
     }
   }
 

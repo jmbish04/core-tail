@@ -1,5 +1,5 @@
 /**
- * @fileoverview Documents API routes for PlateJS integration
+ * @fileoverview Documents API routes
  */
 
 import { zValidator } from "@hono/zod-validator";
@@ -8,34 +8,30 @@ import { drizzle } from "drizzle-orm/d1";
 import { Hono } from "hono";
 import { z } from "zod";
 
-import type { Bindings, Variables } from "../index";
-
-import { documents } from "../../db/schema";
+import { documents } from "@/db/index";
 import { authMiddleware } from "../middleware/auth";
 
-const documentsRouter = new Hono<{ Bindings: Bindings; Variables: Variables }>();
+const documentsRouter = new Hono<{ Bindings: Env }>();
 
 // Apply auth middleware
 documentsRouter.use("*", authMiddleware);
 
 const createDocumentSchema = z.object({
   title: z.string().min(1),
-  content: z.string(), // JSON string of Slate nodes
+  content: z.string(), // JSON string of document content
 });
 
 // GET /api/documents
 documentsRouter.get("/", async (c) => {
   const db = drizzle(c.env.DB);
-  const userId = c.get("userId")!;
 
   try {
-    const userDocuments = await db
+    const allDocuments = await db
       .select()
       .from(documents)
-      .where(eq(documents.userId, userId))
       .orderBy(desc(documents.updatedAt));
 
-    return c.json({ documents: userDocuments });
+    return c.json({ documents: allDocuments });
   } catch (error) {
     console.error("Error fetching documents:", error);
     return c.json({ error: "Failed to fetch documents" }, 500);
@@ -45,14 +41,12 @@ documentsRouter.get("/", async (c) => {
 // POST /api/documents
 documentsRouter.post("/", zValidator("json", createDocumentSchema), async (c) => {
   const db = drizzle(c.env.DB);
-  const userId = c.get("userId")!;
   const { title, content } = c.req.valid("json");
 
   try {
     const result = await db
       .insert(documents)
       .values({
-        userId,
         title,
         content,
       })
@@ -68,7 +62,6 @@ documentsRouter.post("/", zValidator("json", createDocumentSchema), async (c) =>
 // GET /api/documents/:id
 documentsRouter.get("/:id", async (c) => {
   const db = drizzle(c.env.DB);
-  const userId = c.get("userId")!;
   const documentId = parseInt(c.req.param("id"));
 
   try {
@@ -82,13 +75,7 @@ documentsRouter.get("/:id", async (c) => {
       return c.json({ error: "Document not found" }, 404);
     }
 
-    const document = documentResult[0];
-
-    if (document.userId !== userId) {
-      return c.json({ error: "Unauthorized" }, 403);
-    }
-
-    return c.json({ document });
+    return c.json({ document: documentResult[0] });
   } catch (error) {
     console.error("Error fetching document:", error);
     return c.json({ error: "Failed to fetch document" }, 500);
@@ -98,23 +85,10 @@ documentsRouter.get("/:id", async (c) => {
 // PUT /api/documents/:id
 documentsRouter.put("/:id", zValidator("json", createDocumentSchema), async (c) => {
   const db = drizzle(c.env.DB);
-  const userId = c.get("userId")!;
   const documentId = parseInt(c.req.param("id"));
   const { title, content } = c.req.valid("json");
 
   try {
-    // Verify ownership
-    const documentResult = await db
-      .select()
-      .from(documents)
-      .where(eq(documents.id, documentId))
-      .limit(1);
-
-    if (documentResult.length === 0 || documentResult[0].userId !== userId) {
-      return c.json({ error: "Document not found" }, 404);
-    }
-
-    // Update document
     const result = await db
       .update(documents)
       .set({
@@ -124,6 +98,10 @@ documentsRouter.put("/:id", zValidator("json", createDocumentSchema), async (c) 
       })
       .where(eq(documents.id, documentId))
       .returning();
+
+    if (result.length === 0) {
+      return c.json({ error: "Document not found" }, 404);
+    }
 
     return c.json({ document: result[0] });
   } catch (error) {
@@ -135,18 +113,16 @@ documentsRouter.put("/:id", zValidator("json", createDocumentSchema), async (c) 
 // DELETE /api/documents/:id
 documentsRouter.delete("/:id", async (c) => {
   const db = drizzle(c.env.DB);
-  const userId = c.get("userId")!;
   const documentId = parseInt(c.req.param("id"));
 
   try {
-    // Verify ownership
     const documentResult = await db
       .select()
       .from(documents)
       .where(eq(documents.id, documentId))
       .limit(1);
 
-    if (documentResult.length === 0 || documentResult[0].userId !== userId) {
+    if (documentResult.length === 0) {
       return c.json({ error: "Document not found" }, 404);
     }
 

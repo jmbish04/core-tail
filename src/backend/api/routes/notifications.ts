@@ -6,12 +6,10 @@ import { desc, eq, and } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/d1";
 import { Hono } from "hono";
 
-import type { Bindings, Variables } from "../index";
-
-import { notifications } from "../../db/schema";
+import { notifications } from "@/db/index";
 import { authMiddleware } from "../middleware/auth";
 
-const notificationsRouter = new Hono<{ Bindings: Bindings; Variables: Variables }>();
+const notificationsRouter = new Hono<{ Bindings: Env }>();
 
 // Apply auth middleware
 notificationsRouter.use("*", authMiddleware);
@@ -19,22 +17,21 @@ notificationsRouter.use("*", authMiddleware);
 // GET /api/notifications
 notificationsRouter.get("/", async (c) => {
   const db = drizzle(c.env.DB);
-  const userId = c.get("userId")!;
   const unreadOnly = c.req.query("unreadOnly") === "true";
 
   try {
-    let query = db.select().from(notifications).where(eq(notifications.userId, userId));
+    const query = db.select().from(notifications).$dynamic();
 
     if (unreadOnly) {
-      query = query.where(and(eq(notifications.userId, userId), eq(notifications.isRead, false)));
+      query.where(eq(notifications.isRead, false));
     }
 
-    const userNotifications = await query.orderBy(desc(notifications.createdAt)).limit(100);
+    const allNotifications = await query.orderBy(desc(notifications.createdAt)).limit(100);
 
-    const unreadCount = userNotifications.filter((n) => !n.isRead).length;
+    const unreadCount = allNotifications.filter((n) => !n.isRead).length;
 
     return c.json({
-      notifications: userNotifications,
+      notifications: allNotifications,
       unreadCount,
     });
   } catch (error) {
@@ -46,18 +43,16 @@ notificationsRouter.get("/", async (c) => {
 // PUT /api/notifications/:id/read
 notificationsRouter.put("/:id/read", async (c) => {
   const db = drizzle(c.env.DB);
-  const userId = c.get("userId")!;
   const notificationId = parseInt(c.req.param("id"));
 
   try {
-    // Verify ownership
     const notif = await db
       .select()
       .from(notifications)
       .where(eq(notifications.id, notificationId))
       .limit(1);
 
-    if (notif.length === 0 || notif[0].userId !== userId) {
+    if (notif.length === 0) {
       return c.json({ error: "Notification not found" }, 404);
     }
 
@@ -77,13 +72,12 @@ notificationsRouter.put("/:id/read", async (c) => {
 // PUT /api/notifications/read-all
 notificationsRouter.put("/read-all", async (c) => {
   const db = drizzle(c.env.DB);
-  const userId = c.get("userId")!;
 
   try {
     await db
       .update(notifications)
       .set({ isRead: true })
-      .where(and(eq(notifications.userId, userId), eq(notifications.isRead, false)));
+      .where(eq(notifications.isRead, false));
 
     return c.json({ message: "All notifications marked as read" });
   } catch (error) {

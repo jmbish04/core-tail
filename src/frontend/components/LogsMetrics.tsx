@@ -1,4 +1,7 @@
-import React, { useState, useEffect } from "react";
+import * as React from "react";
+import { useState, useEffect } from "react";
+import { logger } from "@/lib/logger";
+import { apiFetch } from "@/lib/api";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 
 interface Metric {
@@ -13,18 +16,13 @@ export function LogsMetrics() {
   useEffect(() => {
     const fetchMetrics = async () => {
       try {
-        const res = await fetch("/api/logs/metrics", {
-          headers: {
-            Authorization: `Bearer ${process.env.WEBHOOK_SECRET || "secret"}`,
-          },
-        });
-        if (res.ok) {
-          const rawData = (await res.json()) as Metric[];
-
+        const { ok, data: rawData } = await apiFetch("/api/logs/metrics");
+        if (ok) {
           // Format for Recharts: { name: 'worker1', error: 5, info: 10 }
           const formattedData: { [key: string]: any } = {};
 
-          rawData.forEach((m) => {
+          const metricsArray = Array.isArray(rawData) ? rawData : (rawData.metrics || []);
+          metricsArray.forEach((m: any) => {
             if (!formattedData[m.workerName]) {
               formattedData[m.workerName] = { name: m.workerName };
             }
@@ -33,8 +31,12 @@ export function LogsMetrics() {
 
           setData(Object.values(formattedData));
         }
-      } catch (err) {
-        console.error("Failed to fetch metrics", err);
+      } catch (err: any) {
+        logger.error(
+          "Metrics Fetch Failed",
+          err,
+          `## API Error - Logs Metrics\n\nFailed to fetch logs metrics from /api/logs/metrics.\n\nError: ${err.message}`
+        );
       }
     };
 

@@ -24,14 +24,14 @@ const handler: ExportedHandler<Env> = {
       url.pathname === "/scalar" ||
       url.pathname === "/docs"
     ) {
-      return honoApp.fetch(request, env, ctx);
+      return honoApp.fetch(request as any, env, ctx);
     }
 
     // 2. Delegate everything else to the Astro SSR handler
     if (astroApp && typeof astroApp.fetch === "function") {
-      return astroApp.fetch(request, env, ctx);
-    } else if (astroApp && astroApp.default && typeof astroApp.default.fetch === "function") {
-      return astroApp.default.fetch(request, env, ctx);
+      return astroApp.fetch(request as any, env, ctx);
+    } else if (astroApp && (astroApp as any).default && typeof (astroApp as any).default.fetch === "function") {
+      return (astroApp as any).default.fetch(request as any, env, ctx);
     }
 
     return new Response("Astro SSR build not found", { status: 500 });
@@ -47,3 +47,4 @@ export default handler;
 // Explicitly export Durable Objects required by Cloudflare
 export { LogAnalyzerAgent } from "./backend/agent";
 export { LogStreamer } from "./backend/do/LogStreamer";
+export { LogParserAgent, DocsResearcherAgent, ScriptAnalyzerAgent } from "./backend/agent/subagents";

@@ -9,21 +9,18 @@
 import { drizzle } from "drizzle-orm/d1";
 import type { ExecutionContext } from "@cloudflare/workers-types";
 
-import { metaInternalLogs } from "../db/schema";
+import { metaInternalLogs } from "../db";
 
 export type LogLevel = "debug" | "info" | "warn" | "error";
 
-export interface LoggerEnv {
-  DB: D1Database;
-  LOG_STREAMER?: DurableObjectNamespace;
-}
+
 
 export class WorkerLogger {
-  private env: LoggerEnv;
+  private env: Env;
   private ctx: ExecutionContext;
   private workerName: string;
 
-  constructor(env: LoggerEnv, ctx: ExecutionContext, workerName = "core-tail") {
+  constructor(env: Env, ctx: ExecutionContext, workerName = "core-tail") {
     this.env = env;
     this.ctx = ctx;
     this.workerName = workerName;
@@ -118,6 +115,6 @@ export class WorkerLogger {
 /**
  * Create a logger instance
  */
-export function createLogger(env: LoggerEnv, ctx: ExecutionContext, workerName = "core-tail"): WorkerLogger {
+export function createLogger(env: Env, ctx: ExecutionContext, workerName = "core-tail"): WorkerLogger {
   return new WorkerLogger(env, ctx, workerName);
 }

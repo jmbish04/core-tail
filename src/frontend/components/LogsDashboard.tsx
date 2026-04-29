@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from "react";
+import { logger } from "@/lib/logger";
+import { apiFetch } from "@/lib/api";
 
 import { LogsMetrics } from "./LogsMetrics";
 import { Button } from "./ui/button";
@@ -30,23 +32,23 @@ export function LogsDashboard() {
         url.searchParams.set("workerName", workerName);
       }
 
-      const res = await fetch(url.toString(), {
-        headers: {
-          Authorization: `Bearer ${process.env.WEBHOOK_SECRET || "secret"}`,
-        },
-      });
-      if (res.ok) {
-        const data = (await res.json()) as Log[];
+      const { ok, data: json } = await apiFetch(url.toString());
+      if (ok) {
+        const data = Array.isArray(json) ? json : (json.logs || []);
         setLogs(data);
 
         // Extract unique workers if not already set
         if (workers.length === 0) {
-          const uniqueWorkers = Array.from(new Set(data.map((l) => l.workerName)));
-          setWorkers(uniqueWorkers);
+          const uniqueWorkers = Array.from(new Set(data.map((l: any) => l.workerName)));
+          setWorkers(uniqueWorkers as string[]);
         }
       }
-    } catch (err) {
-      console.error("Failed to fetch logs", err);
+    } catch (err: any) {
+      logger.error(
+        "Failed to fetch logs",
+        err,
+        `## API Error - Logs Dashboard\n\nFailed to fetch logs from /api/logs.\n\nError: ${err.message}`
+      );
     } finally {
       setLoading(false);
     }
@@ -60,11 +62,10 @@ export function LogsDashboard() {
   const handleAnalyze = async (log: Log) => {
     setAnalyzing((prev) => ({ ...prev, [log.id]: true }));
     try {
-      const res = await fetch("/api/analysis/analyze", {
+      const { ok, data } = await apiFetch("/api/analysis/analyze", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${process.env.WEBHOOK_SECRET || "secret"}`,
         },
         body: JSON.stringify({
           workerName: log.workerName,
@@ -74,15 +75,18 @@ export function LogsDashboard() {
         }),
       });
 
-      if (res.ok) {
-        const data = (await res.json()) as { analysis: string };
+      if (ok) {
         setAnalysis((prev) => ({ ...prev, [log.id]: data.analysis }));
       } else {
         setAnalysis((prev) => ({ ...prev, [log.id]: "Analysis failed." }));
       }
-    } catch (err) {
-      console.error("Analysis error", err);
-      setAnalysis((prev) => ({ ...prev, [log.id]: "Analysis failed." }));
+    } catch (err: any) {
+      logger.error(
+        "Analysis Initialization Failed",
+        err,
+        `## API Error - AI Analysis\n\nFailed to request AI analysis for log entry.\n\nError: ${err.message}`
+      );
+      setAnalysis((prev) => ({ ...prev, [log.id]: "Failed to initiate analysis." }));
     } finally {
       setAnalyzing((prev) => ({ ...prev, [log.id]: false }));
     }
@@ -150,7 +154,7 @@ export function LogsDashboard() {
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => window.alert("Asking Docs: " + log.message)}
+                        onClick={() => logger.info("Ask Docs", log.message)}
                       >
                         Ask Docs
                       </Button>

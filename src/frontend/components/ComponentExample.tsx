@@ -415,7 +415,7 @@ function FormExample() {
                 </Field>
                 <Field>
                   <FieldLabel htmlFor="small-form-role">Role</FieldLabel>
-                  <Select items={roleItems} defaultValue={null}>
+                  <Select>
                     <SelectTrigger id="small-form-role">
                       <SelectValue />
                     </SelectTrigger>

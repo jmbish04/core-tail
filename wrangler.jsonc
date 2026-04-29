@@ -1,6 +1,6 @@
 {
   "name": "core-tail",
-  "main": "dist/_worker.js/index.js",
+  "main": "src/index.ts",
   "compatibility_date": "2026-03-09",
   "compatibility_flags": ["nodejs_compat"],
   "upload_source_maps": true,
@@ -13,132 +13,100 @@
       "enabled": true,
       "head_sampling_rate": 1,
       "persist": true,
-      "invocation_logs": true,
-    },
+      "invocation_logs": true},
     "traces": {
       "enabled": false,
       "persist": true,
-      "head_sampling_rate": 1,
-    },
-  },
+      "head_sampling_rate": 1}},
   "assets": {
     "binding": "ASSETS",
     "directory": "./dist",
     "run_worker_first": true,
-    "not_found_handling": "none",
-  },
+    "not_found_handling": "none"},
   "ai": {
-    "binding": "AI",
-  },
+    "binding": "AI"},
   "durable_objects": {
     "bindings": [
       { "name": "LOG_ANALYZER_AGENT", "class_name": "LogAnalyzerAgent" },
-      { "name": "LOG_STREAMER", "class_name": "LogStreamer" },
-    ],
-  },
+      { "name": "LOG_STREAMER", "class_name": "LogStreamer" }]},
   "migrations": [
     {
       "tag": "v1",
-      "new_sqlite_classes": ["LogAnalyzerAgent"],
-    },
+      "new_sqlite_classes": ["LogAnalyzerAgent"]},
     {
       "tag": "v2",
-      "new_sqlite_classes": ["LogStreamer"],
-    },
-  ],
+      "new_sqlite_classes": ["LogStreamer"]}],
   "kv_namespaces": [
     {
       "binding": "SESSIONS",
-      "id": "498412f3e70e4669b6e29e5203a29dac",
-    },
+      "id": "498412f3e70e4669b6e29e5203a29dac"},
     {
       "binding": "RAW_LOGS",
-      "id": "85e56b49cfff40ef854447c4b2fadc84",
-    },
-  ],
+      "id": "85e56b49cfff40ef854447c4b2fadc84"}],
   "d1_databases": [
     {
       "binding": "DB",
       "database_name": "core-tail",
-      "database_id": "471a952a-2551-493b-abfd-cebd36babddf",
-      "migrations_dir": "drizzle",
-    },
-  ],
+      "database_id": "93ee531a-8167-4473-a5fa-7e22f17214f3",
+      "migrations_dir": "drizzle"}],
   "secrets_store_secrets": [
     {
       "binding": "GITHUB_TOKEN",
       "store_id": "8c42fa70938644e0a8a109744467375f",
-      "secret_name": "GH_TOKEN",
-    },
+      "secret_name": "GH_TOKEN"},
     {
       "binding": "CLOUDFLARE_ACCOUNT_ID",
       "store_id": "8c42fa70938644e0a8a109744467375f",
-      "secret_name": "CLOUDFLARE_ACCOUNT_ID",
-    },
+      "secret_name": "CLOUDFLARE_ACCOUNT_ID"},
     {
       "binding": "CLOUDFLARE_API_TOKEN",
       "store_id": "8c42fa70938644e0a8a109744467375f",
-      "secret_name": "CLOUDFLARE_API_TOKEN",
-    },
+      "secret_name": "CLOUDFLARE_API_TOKEN"},
     {
       "binding": "CLOUDFLARE_SECRETS_STORE_TOKEN",
       "store_id": "8c42fa70938644e0a8a109744467375f",
-      "secret_name": "CLOUDFLARE_SECRETS_STORE_TOKEN",
-    },
+      "secret_name": "CLOUDFLARE_SECRETS_STORE_TOKEN"},
     {
       "binding": "CLOUDFLARE_WORKER_ADMIN_TOKEN",
       "store_id": "8c42fa70938644e0a8a109744467375f",
-      "secret_name": "CLOUDFLARE_WORKER_ADMIN_TOKEN",
-    },
+      "secret_name": "CLOUDFLARE_WORKER_ADMIN_TOKEN"},
     {
       "binding": "CLOUDFLARE_AI_SEARCH_TOKEN",
       "store_id": "8c42fa70938644e0a8a109744467375f",
-      "secret_name": "CLOUDFLARE_AI_SEARCH_TOKEN",
-    },
+      "secret_name": "CLOUDFLARE_AI_SEARCH_TOKEN"},
     {
       "binding": "CLOUDFLARE_OBSERVABILITY_TOKEN",
       "store_id": "8c42fa70938644e0a8a109744467375f",
-      "secret_name": "CLOUDFLARE_OBSERVABILITY_TOKEN",
-    },
+      "secret_name": "CLOUDFLARE_OBSERVABILITY_TOKEN"},
     {
       "binding": "WORKER_API_KEY",
       "store_id": "8c42fa70938644e0a8a109744467375f",
-      "secret_name": "WORKER_API_KEY",
-    },
+      "secret_name": "WORKER_API_KEY"},
     {
       "binding": "AGENTIC_WORKER_API_KEY",
       "store_id": "8c42fa70938644e0a8a109744467375f",
-      "secret_name": "AGENTIC_WORKER_API_KEY",
-    },
+      "secret_name": "AGENTIC_WORKER_API_KEY"},
     {
       "binding": "AI_GATEWAY_TOKEN",
       "store_id": "8c42fa70938644e0a8a109744467375f",
-      "secret_name": "CLOUDFLARE_AI_GATEWAY_TOKEN",
-    },
+      "secret_name": "CLOUDFLARE_AI_GATEWAY_TOKEN"},
     {
       "binding": "CF_BROWSER_RENDER_TOKEN",
       "store_id": "8c42fa70938644e0a8a109744467375f",
-      "secret_name": "CLOUDFLARE_BROWSER_RENDER_TOKEN",
-    },
+      "secret_name": "CLOUDFLARE_BROWSER_RENDER_TOKEN"},
     {
       "binding": "JULES_API_KEY",
       "store_id": "8c42fa70938644e0a8a109744467375f",
-      "secret_name": "JULES_API_KEY",
-    },
+      "secret_name": "JULES_API_KEY"},
     {
       "binding": "GEMINI_API_KEY",
       "store_id": "8c42fa70938644e0a8a109744467375f",
-      "secret_name": "GOOGLE_API_KEY",
-    },
+      "secret_name": "GOOGLE_API_KEY"},
     {
       "binding": "ANTHROPIC_API_KEY",
       "store_id": "8c42fa70938644e0a8a109744467375f",
-      "secret_name": "ANTHROPIC_API_KEY",
-    },
+      "secret_name": "ANTHROPIC_API_KEY"},
     {
       "binding": "OPENAI_API_KEY",
       "store_id": "8c42fa70938644e0a8a109744467375f",
-      "secret_name": "OPENAI_API_KEY",
-    },
-  ],
-}
+      "secret_name": "OPENAI_API_KEY"}]}

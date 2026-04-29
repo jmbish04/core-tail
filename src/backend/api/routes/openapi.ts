@@ -6,9 +6,9 @@ import { swaggerUI } from "@hono/swagger-ui";
 import { OpenAPIHono, createRoute, z } from "@hono/zod-openapi";
 import { apiReference } from "@scalar/hono-api-reference";
 
-import type { Bindings } from "../index";
 
-const app = new OpenAPIHono<{ Bindings: Bindings }>();
+
+const app = new OpenAPIHono<{ Bindings: Env }>();
 
 // Define schemas
 const LogEntrySchema = z.object({
@@ -31,7 +31,7 @@ const ErrorResponseSchema = z.object({
 // GET /api/logs - Get filtered worker logs
 const getLogsRoute = createRoute({
   method: "get",
-  path: "/api/logs",
+  path: "",
   tags: ["Logs"],
   operationId: "getLogs",
   summary: "Get filtered worker logs",
@@ -85,7 +85,7 @@ const getLogsRoute = createRoute({
 // GET /api/logs/workers - Get list of unique worker names
 const getWorkersListRoute = createRoute({
   method: "get",
-  path: "/api/logs/workers",
+  path: "/workers",
   tags: ["Logs"],
   operationId: "getWorkersList",
   summary: "Get list of unique worker names",
@@ -106,7 +106,7 @@ const getWorkersListRoute = createRoute({
 // GET /api/logs/stats - Get error rate statistics
 const getLogsStatsRoute = createRoute({
   method: "get",
-  path: "/api/logs/stats",
+  path: "/stats",
   tags: ["Logs"],
   operationId: "getLogsStats",
   summary: "Get error rate statistics",
@@ -143,7 +143,7 @@ const getLogsStatsRoute = createRoute({
 // GET /api/logs/:id - Get a specific log entry by ID
 const getLogByIdRoute = createRoute({
   method: "get",
-  path: "/api/logs/{id}",
+  path: "/{id}",
   tags: ["Logs"],
   operationId: "getLogById",
   summary: "Get a specific log entry by ID",
@@ -184,7 +184,7 @@ app.doc("/openapi.json", {
   },
   servers: [
     {
-      url: "/api",
+      url: "https://core-tail.hacolby.workers.dev/api",
       description: "API Server",
     },
   ],
@@ -200,7 +200,7 @@ app.get(
     spec: {
       url: "/openapi.json",
     },
-    theme: "default",
+    theme: "solarized",
   } as any),
 );
 

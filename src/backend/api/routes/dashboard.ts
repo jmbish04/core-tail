@@ -6,12 +6,12 @@ import { desc, eq, and, gte } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/d1";
 import { Hono } from "hono";
 
-import type { Bindings, Variables } from "../index";
 
-import { dashboardMetrics } from "../../db/schema";
+
+import { dashboardMetrics } from "@/db/index";
 import { authMiddleware } from "../middleware/auth";
 
-const dashboardRouter = new Hono<{ Bindings: Bindings; Variables: Variables }>();
+const dashboardRouter = new Hono<{ Bindings: Env }>();
 
 // Apply auth middleware to all routes
 dashboardRouter.use("*", authMiddleware);
@@ -23,10 +23,10 @@ dashboardRouter.get("/metrics", async (c) => {
   const limit = parseInt(c.req.query("limit") || "100");
 
   try {
-    let query = db.select().from(dashboardMetrics);
+    const query = db.select().from(dashboardMetrics).$dynamic();
 
     if (category) {
-      query = query.where(eq(dashboardMetrics.category, category));
+      query.where(eq(dashboardMetrics.category, category));
     }
 
     const metrics = await query.orderBy(desc(dashboardMetrics.timestamp)).limit(limit);
@@ -98,7 +98,6 @@ dashboardRouter.get("/charts/:category", async (c) => {
   try {
     const startDate = new Date();
     startDate.setDate(startDate.getDate() - days);
-    const startTimestamp = Math.floor(startDate.getTime() / 1000);
 
     const metrics = await db
       .select()
@@ -106,7 +105,7 @@ dashboardRouter.get("/charts/:category", async (c) => {
       .where(
         and(
           eq(dashboardMetrics.category, category),
-          gte(dashboardMetrics.timestamp, startTimestamp),
+          gte(dashboardMetrics.timestamp, startDate),
         ),
       )
       .orderBy(desc(dashboardMetrics.timestamp));

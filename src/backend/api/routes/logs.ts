@@ -10,7 +10,7 @@ import { z } from "zod";
 
 
 
-import { workerLogs, logs } from "../../db/schema";
+import { workerLogs, logs } from "@/db/index";
 import { getLogsRoute, getWorkersListRoute, getLogsStatsRoute, getLogByIdRoute } from "./openapi";
 
 const logsRouter = new OpenAPIHono<{ Bindings: Env }>();

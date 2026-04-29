@@ -1,5 +1,6 @@
 import { CopyIcon, RefreshCwIcon, WifiIcon, WifiOffIcon } from "lucide-react";
 import * as React from "react";
+import { apiFetch } from "@/lib/api";
 
 import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
@@ -106,12 +107,10 @@ export function CoreTailLogs() {
       if (keyword) params.set("keyword", keyword);
       params.set("limit", "100");
 
-      const response = await fetch(`/api/logs?${params.toString()}`);
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      const { ok, data } = await apiFetch(`/api/logs?${params.toString()}`);
+      if (!ok) {
+        throw new Error(`HTTP Error: Server returned a non-OK response`);
       }
-
-      const data = await response.json();
       setLogs(data.logs || []);
 
       addToast({
@@ -228,8 +227,8 @@ export function CoreTailLogs() {
   };
 
   return (
-    <div className="container mx-auto py-8 px-4">
-      <Card className="mb-6">
+    <div className="flex flex-col flex-1 px-4 py-4 h-[calc(100vh-var(--header-height)-var(--footer-height))]">
+      <Card className="flex flex-col flex-1 min-h-0">
         <CardHeader>
           <CardTitle className="flex items-center justify-between">
             <span>Core-Tail Worker Logs</span>
@@ -257,7 +256,7 @@ export function CoreTailLogs() {
             </div>
           </CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="flex flex-col flex-1 min-h-0">
           {/* Connection Error Banner */}
           {!isConnected && connectionError && useWebSocket && (
             <div className="mb-4 p-4 bg-yellow-50 dark:bg-yellow-950 border border-yellow-200 dark:border-yellow-800 rounded-lg">
@@ -335,7 +334,7 @@ export function CoreTailLogs() {
             </div>
           </div>
 
-          <div className="bg-black text-green-400 p-4 rounded font-mono text-sm h-[600px] overflow-y-auto">
+          <div className="bg-black text-green-400 p-4 rounded font-mono text-sm flex-1 min-h-0 overflow-y-auto">
             {logs.length === 0 ? (
               <div className="text-gray-500">
                 {useWebSocket && isConnected
