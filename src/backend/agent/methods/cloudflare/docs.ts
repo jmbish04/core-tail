@@ -9,6 +9,7 @@
 
 import type { DocsSearchResult } from "@/backend/agent/types";
 import { batchUrlsToMarkdown } from "@/backend/agent/methods/cloudflare/browser-render";
+import { runGpt120b } from "@/backend/ai";
 
 // ── MCP Server Configuration ────────────────────────────────────────────────
 
@@ -149,11 +150,7 @@ Output a JSON array of up to 2 search query strings. Do not output anything else
 Example: ["D1 database bindings", "Workers AI limitations"]
 `;
 
-    const aiResponse = (await env.AI.run("@cf/openai/gpt-oss-120b", {
-      prompt: promptText,
-    } as any)) as any;
-
-    const rawResponseText = aiResponse.response || aiResponse.text || JSON.stringify(aiResponse);
+    const rawResponseText = await runGpt120b(env, { prompt: promptText });
     
     // 2. Parse the JSON array from the response
     let queries: string[] = [];
@@ -200,8 +197,9 @@ Example: ["D1 database bindings", "Workers AI limitations"]
     
     let addedUsefulContext = false;
     for (const page of renderedPages) {
-      if (page.success && page.markdown.length > 100) {
-        gatheredContext.push(`### Source: ${page.url}\n\n${page.markdown.slice(0, 6000)}`); // cap each page at 6k chars
+        // gpt-oss-120b supports 128,000 tokens (~500,000 chars).
+        // Pass up to 100,000 chars per docs page to preserve full context.
+        gatheredContext.push(`### Source: ${page.url}\n\n${page.markdown.slice(0, 100000)}`);
         addedUsefulContext = true;
       }
     }
