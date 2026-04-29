@@ -22,7 +22,7 @@ import { checkAgentHealth } from "@/backend/agent/health";
 import { fetchWorkerScript } from "@/backend/agent/methods/cloudflare/workers/script";
 import { fetchWorkerLogs, fetchWorkerErrors } from "@/backend/agent/methods/cloudflare/workers/logs";
 import { buildDocsContext } from "@/backend/agent/methods/cloudflare/docs";
-import { runGpt120b } from "@/backend/ai";
+import { WorkersAI } from "@/backend/workersai";
 
 export class LogAnalyzerAgent extends Agent<Env, AgentState> {
   initialState: AgentState = {
@@ -232,6 +232,7 @@ Format your response as:
       return `[Simulated Analysis] AI binding unavailable.\n\nError in ${context.workerName}: ${context.errorMessage}\n\nSource code retrieved: ${context.sourceCode.length} chars\nRecent errors: ${context.recentLogs.length}\nDocs references: ${context.relevantDocs.length}`;
     }
 
-    return await runGpt120b(this.env, { prompt: promptText, max_tokens: 4096 });
+    const ai = new WorkersAI(this.env);
+    return await ai.generateText("@cf/openai/gpt-oss-120b", { prompt: promptText, max_tokens: 4096 });
   }
 }

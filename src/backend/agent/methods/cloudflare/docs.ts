@@ -9,7 +9,7 @@
 
 import type { DocsSearchResult } from "@/backend/agent/types";
 import { batchUrlsToMarkdown } from "@/backend/agent/methods/cloudflare/browser-render";
-import { runGpt120b } from "@/backend/ai";
+import { WorkersAI } from "@/backend/workersai";
 
 // ── MCP Server Configuration ────────────────────────────────────────────────
 
@@ -150,7 +150,8 @@ Output a JSON array of up to 2 search query strings. Do not output anything else
 Example: ["D1 database bindings", "Workers AI limitations"]
 `;
 
-    const rawResponseText = await runGpt120b(env, { prompt: promptText });
+    const ai = new WorkersAI(env);
+    const rawResponseText = await ai.generateText("@cf/openai/gpt-oss-120b", { prompt: promptText });
     
     // 2. Parse the JSON array from the response
     let queries: string[] = [];
