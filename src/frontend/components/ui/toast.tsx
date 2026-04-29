@@ -113,12 +113,18 @@ function Toast({ toast, onRemove }: { toast: ToastProps; onRemove: (id: string) 
         {toast.promptToCopy && (
           <button
             onClick={() => {
-              navigator.clipboard.writeText(toast.promptToCopy!);
-              // Dispatch a global event for the logger to pick up, or just native alert?
-              // The GlobalToaster will pick up success events, but let's just use window.dispatchEvent to notify success
-              window.dispatchEvent(new CustomEvent('frontend-log', {
-                detail: { level: 'success', title: 'Copied!', message: 'Error details copied to clipboard' }
-              }));
+              navigator.clipboard.writeText(toast.promptToCopy!)
+                .then(() => {
+                  window.dispatchEvent(new CustomEvent('frontend-log', {
+                    detail: { level: 'success', title: 'Copied!', message: 'Error details copied to clipboard' }
+                  }));
+                })
+                .catch((err) => {
+                  console.error("[Toast] Copy failed:", err);
+                  window.dispatchEvent(new CustomEvent('frontend-log', {
+                    detail: { level: 'error', title: 'Copy Failed', message: 'Failed to copy to clipboard' }
+                  }));
+                });
             }}
             className="mt-2 inline-flex items-center justify-center rounded-md text-xs font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-8 px-3 py-2 text-foreground"
           >

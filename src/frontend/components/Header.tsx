@@ -9,6 +9,7 @@ import { buttonVariants } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { siteConfig } from "@/lib/config";
 import { cn } from "@/lib/utils";
+import { apiFetch } from "@/lib/api";
 
 export function Header() {
   const [starCount, setStarCount] = React.useState<string>("—");
@@ -21,12 +22,13 @@ export function Header() {
 
         if (!owner || !repo) return;
 
-        const res = await fetch(`https://api.github.com/repos/${owner}/${repo}`);
+        const { ok, data } = await apiFetch<{ stargazers_count?: number }>(
+          `https://api.github.com/repos/${owner}/${repo}`
+        );
 
-        if (!res.ok) return;
+        if (!ok) return;
 
-        const json: { stargazers_count?: number } = await res.json();
-        const stars = json.stargazers_count ?? 0;
+        const stars = data.stargazers_count ?? 0;
 
         const formatted = stars >= 1000 ? `${Math.round(stars / 1000)}k` : stars.toLocaleString();
 

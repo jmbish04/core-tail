@@ -184,7 +184,7 @@ app.doc("/openapi.json", {
   },
   servers: [
     {
-      url: "/api",
+      url: "https://core-tail.hacolby.workers.dev/api",
       description: "API Server",
     },
   ],

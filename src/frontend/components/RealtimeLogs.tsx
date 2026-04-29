@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Input } from "./ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
 import { useToast } from "./ui/toast";
+import { apiFetch } from "@/lib/api";
 
 interface LogEntry {
   id: number;
@@ -41,9 +42,10 @@ export function RealtimeLogs() {
 
   // Load workers list
   React.useEffect(() => {
-    apiFetch("/api/logs/workers")
-      .then((res) => res.json())
-      .then((data: any) => setWorkers(data.workers || []))
+    apiFetch<{ workers: string[] }>("/api/logs/workers")
+      .then(({ ok, data }) => {
+        if (ok) setWorkers(data.workers || []);
+      })
       .catch((err) => console.error("Failed to load workers:", err));
   }, []);
 
@@ -79,10 +81,9 @@ export function RealtimeLogs() {
         params.set("since", lastSyncTimestamp);
       }
 
-      const response = await fetch(`/api/logs/sync?${params.toString()}`);
-      const data = (await response.json()) as any;
+      const { ok, data } = await apiFetch<any>(`/api/logs/sync?${params.toString()}`);
 
-      if (data.logs && data.logs.length > 0) {
+      if (ok && data.logs && data.logs.length > 0) {
         setLogs((prev) => {
           // Merge new logs with existing, remove duplicates by id
           const existingIds = new Set(prev.map(l => l.id));
