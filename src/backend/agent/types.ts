@@ -16,6 +16,7 @@ export type AnalyzeRequest = {
   logId: number;
   message: string;
   metadata: string | null;
+  errorHash?: string;
 };
 
 /** Result from fetching a worker script */

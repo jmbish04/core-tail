@@ -2,15 +2,20 @@
  * @fileoverview LogAnalyzerAgent — Durable Object powered by the Agents SDK.
  *
  * Orchestrates error analysis by:
- * 1. Fetching the failing worker's source code via the Cloudflare SDK
- * 2. Pulling recent logs/errors for that worker
- * 3. Searching Cloudflare docs for relevant guidance
- * 4. Sending the full context to Workers AI to produce a fix prompt
+ * 1. Checking D1 cache for existing analysis results
+ * 2. Fetching the failing worker's source code via the Cloudflare SDK
+ * 3. Pulling recent logs/errors for that worker
+ * 4. Searching Cloudflare docs for relevant guidance (via MCP + Browser Rendering)
+ * 5. Sending the full context to Workers AI to produce a fix prompt
+ * 6. Persisting the result to D1 for future cache hits
  *
  * All upstream interactions use the `cloudflare` npm SDK — no raw fetch().
  */
 
 import { Agent } from "agents";
+import { drizzle } from "drizzle-orm/d1";
+import { eq, and } from "drizzle-orm";
+import { errorAnalyses } from "@/db/index";
 
 import type { AgentState, AnalyzeRequest, AnalysisContext } from "@/backend/agent/types";
 import { checkAgentHealth } from "@/backend/agent/health";
@@ -51,14 +56,47 @@ export class LogAnalyzerAgent extends Agent<Env, AgentState> {
   /**
    * Core analysis workflow.
    *
-   * Gathers context from 3 sources in parallel, then feeds it all
-   * into Workers AI to produce a comprehensive fix prompt.
+   * 1. Check D1 cache for existing analysis by (workerName, errorHash)
+   * 2. If miss, gather context from 3 sources in parallel
+   * 3. Feed context into Workers AI to produce a comprehensive fix prompt
+   * 4. Persist the result to D1 for future cache hits
    */
   private async handleAnalyze(request: Request): Promise<Response> {
     this.setState({ ...this.state, status: "analyzing" });
 
     try {
       const data = (await request.json()) as AnalyzeRequest;
+
+      // ── Phase 0: D1 cache check ─────────────────────────────────
+      if (data.errorHash) {
+        const db = drizzle(this.env.DB);
+        const existing = await db
+          .select()
+          .from(errorAnalyses)
+          .where(
+            and(
+              eq(errorAnalyses.workerName, data.workerName),
+              eq(errorAnalyses.errorHash, data.errorHash),
+              eq(errorAnalyses.status, "complete"),
+            ),
+          )
+          .limit(1);
+
+        if (existing.length > 0 && existing[0].analysisPrompt) {
+          this.setState({
+            status: "complete",
+            analysis: existing[0].analysisPrompt,
+            lastAnalyzedWorker: data.workerName,
+            lastAnalyzedAt: existing[0].createdAt?.toISOString() ?? null,
+          });
+          return Response.json({
+            success: true,
+            analysis: existing[0].analysisPrompt,
+            cached: true,
+            createdAt: existing[0].createdAt?.toISOString(),
+          });
+        }
+      }
 
       // ── Phase 1: Gather context in parallel ───────────────────
       const [scriptResult, logsResult, docsResult] = await Promise.all([
@@ -79,6 +117,34 @@ export class LogAnalyzerAgent extends Agent<Env, AgentState> {
       // ── Phase 2: AI analysis ──────────────────────────────────
       const analysisText = await this.runAIAnalysis(context, docsResult.contextString);
 
+      // ── Phase 3: Persist to D1 ────────────────────────────────
+      if (data.errorHash) {
+        try {
+          const db = drizzle(this.env.DB);
+          // Upsert — delete old if exists, then insert
+          await db
+            .delete(errorAnalyses)
+            .where(
+              and(
+                eq(errorAnalyses.workerName, data.workerName),
+                eq(errorAnalyses.errorHash, data.errorHash),
+              ),
+            );
+          await db.insert(errorAnalyses).values({
+            workerName: data.workerName,
+            errorHash: data.errorHash,
+            errorMessage: data.message,
+            sourceCode: scriptResult.content.substring(0, 50000),
+            docsContext: docsResult.contextString.substring(0, 10000),
+            analysisPrompt: analysisText,
+            status: "complete",
+          });
+        } catch (dbErr) {
+          console.error("[LogAnalyzerAgent] Failed to persist to D1:", dbErr);
+          // Non-fatal — we still return the analysis
+        }
+      }
+
       this.setState({
         status: "complete",
         analysis: analysisText,
@@ -89,6 +155,7 @@ export class LogAnalyzerAgent extends Agent<Env, AgentState> {
       return Response.json({
         success: true,
         analysis: analysisText,
+        cached: false,
         context: {
           scriptAvailable: scriptResult.success,
           recentErrorCount: logsResult.length,
@@ -97,6 +164,7 @@ export class LogAnalyzerAgent extends Agent<Env, AgentState> {
       });
     } catch (err: any) {
       const message = err instanceof Error ? err.message : String(err);
+      console.error("[LogAnalyzerAgent] Analysis failed:", err);
       this.setState({ ...this.state, status: "error", analysis: message });
       return Response.json({ error: message }, { status: 500 });
     }
